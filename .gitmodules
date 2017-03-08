@@ -1,0 +1,4 @@
+[submodule "CorMapAnalysis"]
+	path = CorMapAnalysis
+	url = https://github.com/lqhuang/CorMapAnalysis.git
+	branch = master-no-tutorials
