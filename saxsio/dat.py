@@ -159,7 +159,7 @@ def subtract_curves(RAW_dats_list, buffer_dat, directory, prefix='data',
         if scale:
             scaling_I = scale_curve((qs, Is), (ref_q, ref_I), qmin=qmin, qmax=qmax)
         else:
-            print("Do not scales, scaling_factor is ", str(1))
+            print("Do not scale, scaling_factor is ", str(1))
             scaling_I = Is * 1.0
         subtract_I = scaling_I - buffer_I
         extra_info = filename.split('/')[-1]

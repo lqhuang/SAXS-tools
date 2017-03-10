@@ -11,7 +11,7 @@ from utils import find_common_string_from_list
 def plot_CorMapAnalysis(root_location, frames_directory=None, scale=False, subtract=True, skip=0,
                         buffer_dat=None, ref_dat=None, save_figures=False, figures_directory=None):
     # check Frames directory
-    exists_frames_directory = os.path.exists(os.path.join(root_location, 'Valid_Frames'))
+    exists_frames_directory = os.path.exists(os.path.join(root_location, 'Frames'))
     exists_valid_frames_directory = os.path.exists(os.path.join(root_location, 'Valid_Frames'))
     if exists_frames_directory and exists_valid_frames_directory:
         file_location = os.path.join(root_location, 'Frames', '*')
@@ -72,7 +72,7 @@ if __name__ == '__main__':
     working_directory = r'E:\2017\201703\20170310'
     parser = argparse.ArgumentParser()
     parser.add_argument('-r', '--root_directory', help='Root directory for EXPERIMENTS data',
-                        default=os.path.join(working_directory, 'EXP13'))
+                        default=os.path.join(working_directory, 'EXP17'))
     args = parser.parse_args()
     root_location = args.root_directory
-    plot_CorMapAnalysis(root_location, scale=True, subtract=True, skip=1, save_figures=True)
+    plot_CorMapAnalysis(root_location, scale=False, subtract=True, skip=1, save_figures=True)
