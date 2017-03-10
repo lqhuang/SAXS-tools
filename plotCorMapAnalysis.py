@@ -72,6 +72,9 @@ if __name__ == '__main__':
     working_directory = r'E:\2017\201703\20170310'
     parser = argparse.ArgumentParser()
     parser.add_argument('-r', '--root_directory', help='Root directory for EXPERIMENTS data')
+    parser.add_argument('--skip', help='Frames need to be skipped (default=1)', type=int, default=1)
+    # parser.add_argument('--scale', help='Whether to scale curves')
     args = parser.parse_args()
     root_location = args.root_directory
-    plot_CorMapAnalysis(root_location, scale=False, subtract=True, skip=1, save_figures=True)
+    skip = args.skip
+    plot_CorMapAnalysis(root_location, scale=False, subtract=True, skip=skip, save_figures=True)
