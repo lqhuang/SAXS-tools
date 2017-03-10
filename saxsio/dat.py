@@ -55,7 +55,6 @@ def load_dat(filepath):
     Es = np.asarray(Es)
     return qs, Is, Es
 
-
 def load_RAW_dat(filepath):
     with open(filepath, 'r') as f:
         qs = []  # q
@@ -87,7 +86,6 @@ def load_RAW_dat(filepath):
     Es = np.asarray(Es)
     return qs, Is, Es
 
-
 def write_dat(filepath, RAW_dat, extra_info=None):
     """
     input:
@@ -108,48 +106,64 @@ def write_dat(filepath, RAW_dat, extra_info=None):
             content = '{0:.6e} {1:.6e} {2:.6e} \n'.format(seq[0], seq[1], seq[2])
             f.write(content)
 
-
-def scale_curve(raw_dat, ref_dat, qmin, qmax):
+def scale_curve(curve, ref_curve, qmin, qmax):
     """
     Scale 1D scatter curve
     input:
-        raw_dat: (q, I)
-        ref_dat: (q, I)
+        curve: (q, I)
+        ref_curve: (q, I)
         qmin:
         qmax:
     output:
     """
-    raw_q, raw_I = raw_dat[0], raw_dat[1]
-    ref_q, ref_I = ref_dat[0], ref_dat[1]
-    assert len(raw_q) == len(ref_q)
+    curve_q, curve_I = curve[0], curve[1]
+    ref_q, ref_I = ref_curve[0], ref_curve[1]
+    assert len(curve_q) == len(ref_q)
 
     qmin_idx = np.argmin(np.abs(ref_q - qmin))
     qmax_idx = np.argmin(np.abs(ref_q - qmax))
-    scaling_factor =  ref_I[qmin_idx:qmax_idx].mean() / raw_I[qmin_idx:qmax_idx].mean()
-    scaling_I = scaling_factor * raw_I
-
+    scaling_factor =  ref_I[qmin_idx:qmax_idx].mean() / curve_I[qmin_idx:qmax_idx].mean()
+    print("scaling_factor is ", str(scaling_factor)[0:6])
+    scaling_I = scaling_factor * curve_I
     return scaling_I
 
-def average_curves(dats_list, step=1):
+def averge_curves(curves_dat_list):
     pass
-    return average_list
+    if not os.path.exists(directory):
+        os.mkdir(directory)
+    
+    qs_list = list()
+    Is_list = list()
+    Es_list = list()
+    for fname in dats_list:
+        pass
+    
+    return average_dat_list
 
-def subtract_curves(RAW_dats_list, ref_dat, buffer_dat, directory, qmin=0.20, qmax=0.25, prefix='data'):
+def subtract_curves(RAW_dats_list, buffer_dat, directory, prefix='data',
+                    scale=False, ref_dat=None, qmin=0.20, qmax=0.25):
     """all dats should be original format from software RAW"""
     if not os.path.exists(directory):    
         os.mkdir(directory)
-
-    ref_q, ref_I, ref_E = load_RAW_dat(ref_dat)
+    
     buffer_q, buffer_I, buffer_E = load_RAW_dat(buffer_dat)
-
+    if ref_dat:
+        ref_q, ref_I, ref_E = load_RAW_dat(ref_dat)
+    else:
+        print('ref data not load')
+    
     subtract_dat_list = list()
     for i, filename in enumerate(RAW_dats_list, 1):
-        savepath = os.path.join(directory, 'S_' + str(prefix) + '_' + str(i).zfill(5) + '.dat')
+        file_path = os.path.join(directory, 'S_' + str(prefix) + '_' + str(i).zfill(5) + '.dat')
         qs, Is, Es = load_RAW_dat(filename)
-        scaling_I = scale_curve((qs, Is), (ref_q, ref_I), qmin=qmin, qmax=qmax)
+        if scale:
+            scaling_I = scale_curve((qs, Is), (ref_q, ref_I), qmin=qmin, qmax=qmax)
+        else:
+            print("Do not scales, scaling_factor is ", str(1))
+            scaling_I = Is * 1.0
         subtract_I = scaling_I - buffer_I
         extra_info = filename.split('/')[-1]
-        write_dat(savepath, (qs, subtract_I, Es), extra_info)
-        subtract_dat_list.append(savepath)
+        write_dat(file_path, (qs, subtract_I, Es), extra_info)
+        subtract_dat_list.append(file_path)
 
     return subtract_dat_list
