@@ -71,8 +71,7 @@ def plot_CorMapAnalysis(root_location, frames_directory=None, scale=False, subtr
 if __name__ == '__main__':
     working_directory = r'E:\2017\201703\20170310'
     parser = argparse.ArgumentParser()
-    parser.add_argument('-r', '--root_directory', help='Root directory for EXPERIMENTS data',
-                        default=os.path.join(working_directory, 'EXP17'))
+    parser.add_argument('-r', '--root_directory', help='Root directory for EXPERIMENTS data')
     args = parser.parse_args()
     root_location = args.root_directory
     plot_CorMapAnalysis(root_location, scale=False, subtract=True, skip=1, save_figures=True)
