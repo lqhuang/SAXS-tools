@@ -2,30 +2,38 @@ import os
 import re
 import glob
 import difflib
+import argparse
 from matplotlib import pyplot as plt
 from CorMapAnalysis import ScatterAnalysis
 from saxsio import dat
 from utils import find_common_string_from_list
 
-def plot_CorMapAnalysis(root_location, scale=False, subtract=True, skip=0,
-                        buffer_dat=None, ref_dat=None, save=False, directory=None):
-    # check frames
-    if not os.path.exists(os.path.join(root_location, 'Valid_Frames')):
+def plot_CorMapAnalysis(root_location, frames_directory=None, scale=False, subtract=True, skip=0,
+                        buffer_dat=None, ref_dat=None, save_figures=False, figures_directory=None):
+    # check Frames directory
+    exists_frames_directory = os.path.exists(os.path.join(root_location, 'Valid_Frames'))
+    exists_valid_frames_directory = os.path.exists(os.path.join(root_location, 'Valid_Frames'))
+    if exists_frames_directory and exists_valid_frames_directory:
+        file_location = os.path.join(root_location, 'Frames', '*')
+    elif exists_frames_directory and not exists_valid_frames_directory:
+        file_location = os.path.join(root_location, 'Frames', '*')
+    elif not exists_frames_directory and exists_valid_frames_directory:
+        file_location = os.path.join(root_location, 'Valid_Frames', '*')
+    else:
         raise ValueError('Do not exist frames directory')
-    file_location = os.path.join(root_location, 'Valid_Frames', '*')
+    # glob files
     file_list = glob.glob(file_location)
     buffer_dat_list = list()
     data_dat_list = list()
     frame_num_list = list()
-    for i, fname in enumerate(file_list):
+    for fname in file_list:
         if 'buffer' in fname.lower():
             buffer_dat_list.append(fname)
         else:
             data_dat_list.append(fname)
             frame_num = re.findall(r'\d+', fname)[-1]
             frame_num_list.append(float(frame_num))
-    assert sorted(frame_num_list) == frame_num_list
-    
+    assert sorted(frame_num_list) == frame_num_list # check sequence of frame_num
     # scale and subtract
     if not buffer_dat:
         if len(buffer_dat_list) < 1:
@@ -42,29 +50,29 @@ def plot_CorMapAnalysis(root_location, scale=False, subtract=True, skip=0,
     subtract_directory = os.path.join(root_location, 'Subtract')
     subtract_dat_list = dat.subtract_curves(data_dat_list, buffer_dat, subtract_directory, prefix='data',
                                             scale=scale, ref_dat=ref_dat, qmin=0.15, qmax=0.20)
-    
     # plot CorMap
     subtract_dat_location = find_common_string_from_list(subtract_dat_list)
     scat_obj = ScatterAnalysis.from_1d_curves(subtract_dat_location + '*')
-    scat_obj.plot_cormap(display=False, save=save, filename='cormap', directory=directory)
-    scat_obj.plot_heatmap(display=False, save=save, filename='heatmap', directory=directory)
+    if not figures_directory:
+        figures_directory = os.path.join(root_location, 'Figures')
+    scat_obj.plot_cormap(display=False, save=save_figures, filename='cormap',
+                         directory=figures_directory)
+    scat_obj.plot_heatmap(display=False, save=save_figures, filename='heatmap',
+                          directory=figures_directory)
     plt.close('all')
     num_frames = len(subtract_dat_list)
     cormap_step = 10
     for last_frame in range(cormap_step, num_frames+cormap_step, cormap_step):
         scat_obj.plot_cormap(display=False, last=last_frame,
-                             save=save, filename='cormap_1_to_'+str(last_frame), directory=directory)
+                             save=save_figures, filename='cormap_1_to_'+str(last_frame),
+                             directory=figures_directory)
     plt.close('all')
 
 if __name__ == '__main__':
     working_directory = r'E:\2017\201703\20170310'
-    # for i in [1,2,3,4,5,6,7,8,9,10]:
-    #     try:
-    #         root_location = os.path.join(working_directory, 'EXP'+str(i).zfill(2))
-    #         plot_CorMapAnalysis(os.path.join(root_location), scale=False, subtract=True, skip=1,
-    #                             save=True, directory=os.path.join(root_location, 'Figures'))
-    #     except:
-    #         print('test')
-    root_location = os.path.join(working_directory,  'EXP13')
-    plot_CorMapAnalysis(os.path.join(root_location), scale=True, subtract=True, skip=0,
-                        save=True, directory=os.path.join(root_location, 'Figures'))
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-r', '--root_directory', help='Root directory for EXPERIMENTS data',
+                        default=os.path.join(working_directory, 'EXP13'))
+    args = parser.parse_args()
+    root_location = args.root_directory
+    plot_CorMapAnalysis(root_location, scale=True, subtract=True, skip=1, save_figures=True)
