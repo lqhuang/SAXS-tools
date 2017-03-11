@@ -55,26 +55,33 @@ def plot_CorMapAnalysis(root_location, frames_directory=None, scale=False, subtr
     scat_obj = ScatterAnalysis.from_1d_curves(subtract_dat_location + '*')
     if not figures_directory:
         figures_directory = os.path.join(root_location, 'Figures')
-    scat_obj.plot_cormap(display=False, save=save_figures, filename='cormap',
+    EXP_prefix = os.path.basename(root_location)
+    scat_obj.plot_cormap(display=False, save=save_figures, filename=EXP_prefix+'cormap',
                          directory=figures_directory)
-    scat_obj.plot_heatmap(display=False, save=save_figures, filename='heatmap',
+    scat_obj.plot_heatmap(display=False, save=save_figures, filename=EXP_prefix+'heatmap',
                           directory=figures_directory)
     plt.close('all')
     num_frames = len(subtract_dat_list)
     cormap_step = 10
     for last_frame in range(cormap_step, num_frames+cormap_step, cormap_step):
         scat_obj.plot_cormap(display=False, last=last_frame,
-                             save=save_figures, filename='cormap_1_to_'+str(last_frame),
+                             save=save_figures, filename=EXP_prefix+'cormap_1_to_'+str(last_frame),
                              directory=figures_directory)
     plt.close('all')
 
 if __name__ == '__main__':
-    working_directory = r'E:\2017\201703\20170310'
+    # working_directory = r'E:\2017\201703\20170310'
     parser = argparse.ArgumentParser()
     parser.add_argument('-r', '--root_directory', help='Root directory for EXPERIMENTS data')
+    parser.add_argument('-f', '--figures_directory',
+                        help='Figures directory in root directory for CorMap Analysis (default=Figures)',
+                        default='Figures')
     parser.add_argument('--skip', help='Frames need to be skipped (default=1)', type=int, default=1)
-    # parser.add_argument('--scale', help='Whether to scale curves')
+    parser.add_argument('--scale', help='Whether to scale curves (default=False)',  type=bool, default=False)
     args = parser.parse_args()
     root_location = args.root_directory
     skip = args.skip
-    plot_CorMapAnalysis(root_location, scale=False, subtract=True, skip=skip, save_figures=True)
+    scale = args.scale
+    figures_directory = os.path.join(root_location, args.figures_directory)
+    plot_CorMapAnalysis(root_location, scale=scale, subtract=True, skip=skip,
+                        save_figures=True, figures_directory=figures_directory)
