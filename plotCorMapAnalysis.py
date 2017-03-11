@@ -56,16 +56,16 @@ def plot_CorMapAnalysis(root_location, frames_directory=None, scale=False, subtr
     if not figures_directory:
         figures_directory = os.path.join(root_location, 'Figures')
     EXP_prefix = os.path.basename(root_location)
-    scat_obj.plot_cormap(display=False, save=save_figures, filename=EXP_prefix+'cormap',
+    scat_obj.plot_cormap(display=False, save=save_figures, filename=EXP_prefix+'_cormap',
                          directory=figures_directory)
-    scat_obj.plot_heatmap(display=False, save=save_figures, filename=EXP_prefix+'heatmap',
+    scat_obj.plot_heatmap(display=False, save=save_figures, filename=EXP_prefix+'_heatmap',
                           directory=figures_directory)
     plt.close('all')
     num_frames = len(subtract_dat_list)
     cormap_step = 10
     for last_frame in range(cormap_step, num_frames+cormap_step, cormap_step):
         scat_obj.plot_cormap(display=False, last=last_frame,
-                             save=save_figures, filename=EXP_prefix+'cormap_1_to_'+str(last_frame),
+                             save=save_figures, filename=EXP_prefix+'_cormap_1_to_'+str(last_frame),
                              directory=figures_directory)
     plt.close('all')
 
