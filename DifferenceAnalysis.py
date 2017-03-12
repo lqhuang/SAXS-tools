@@ -10,8 +10,9 @@ def get_data_dict(dat_file):
     data_dict = dict()
     filename = dat_file.split(os.path.sep)[-1]
     data_dict['filename'] = filename
-    data_dict['label'] = filename.replace('.dat', '').replace('_', '')
-    q, intensity, error = dat.load_RAW_dat(dat_filef)
+    data_dict['label'] = filename.replace('.dat', '').replace('_', ' ')
+    q, intensity, error = dat.load_RAW_dat(dat_file)
+    q, intensity, error = dat.crop_curve((q, intensity, error), qmax=0.10)
     data_dict['q'] = q
     data_dict['I'] = intensity
     data_dict['E'] = error
@@ -23,12 +24,14 @@ class DifferenceAnalysis(object):
     # ----------------------------------------------------------------------- #
     #                         CLASS VARIABLES                                 #
     # ----------------------------------------------------------------------- #
-    mpl.rc('font', family='serif', weight='normal', size=12)
-    PLOT_LABEL = {'family': 'serif',
-                  'weight': 'normal',
-                  'size': 16}
+    # mpl.rc('font', family='sans-serif', weight='normal', size=12)
+    PLOT_LABEL = {'family' : 'sans-serif', # 'sans-serif',
+                  'weight' : 'normal',
+                  'size' : 16}
     LABEL_SIZE = 14
-    plt.rc('font', PLOT_LABEL)
+    plt.rc('font', **PLOT_LABEL)
+    # print(plt.style.available)
+    plt.rc('text', **{'latex.unicode' : True})
 
     PLOT_NUM = 0
 
@@ -89,11 +92,12 @@ class DifferenceAnalysis(object):
     def from_subtracted_dats(self, subtracted_dat_location):
         # glob files
         file_list = glob.glob(subtracted_dat_location)
+        assert len(file_list) != 0
         # read data
         subtracted_dat_list = [fname for fname in file_list \
-                               if fname.lower().startswith('s')]
+                               if fname.split(os.path.sep)[-1].lower().startswith('s')]
+        assert len(subtracted_dat_list) != 0
         data_dict_list = [get_data_dict(dat_file) for dat_file in subtracted_dat_list]
-
         cls = DifferenceAnalysis(data_dict_list)
         return cls
 
@@ -112,6 +116,7 @@ class DifferenceAnalysis(object):
             baseline_dict = get_data_dict(baseline_dat)
         for data_dict in self.data_dict_list:
             data_dict['relative_diff'] = (data_dict['I'] - baseline_dict['I']) / baseline_dict['I']
+            data_dict['relative_diff'] *= 100
         self.keys = self.data_dict_list[0].keys()
 
     def calc_absolute_diff(self, baseline_dat=None, crop=False):
@@ -120,7 +125,7 @@ class DifferenceAnalysis(object):
         else:
             baseline_dict = get_data_dict(baseline_dat)
         for data_dict in self.data_dict_list:
-            data_dict['absolute_diff'] = (data_dict['I'] - baseline_dict['I']) / baseline_dict['I']
+            data_dict['absolute_diff'] = data_dict['I'] - baseline_dict['I']
         self.keys = self.data_dict_list[0].keys()
 
     # ----------------------- PLOT ------------------------#
@@ -131,22 +136,26 @@ class DifferenceAnalysis(object):
 
         # ++++++++++++++++++++++++++++++ PLOT +++++++++++++++++++++++++++ #
         fig = plt.figure(self.PLOT_NUM)
+        ax = plt.subplot(111)
         intensity_key = 'I'
         if log_intensity:
-            if 'log_I' not in self.keys():
+            if 'log_I' not in self.keys:
                 self.calc_log_intensity()
             intensity_key = 'log_I'
         for data_dict in self.data_dict_list:
             plt.plot(data_dict['q'], data_dict[intensity_key],
                      label=data_dict['label'],
-                     linestyle=data_dict['linestyle'], linewidth=1.5)
-        plt.legend(loc='upper right', frameon=False, prop={'size':self.LABEL_SIZE})
+                     linestyle=data_dict['linestyle'], linewidth=1)
         plt.xlabel(r'Scattering Vector, q ($nm^{-1}$)')
         if log_intensity:
-            plt.ylabel('log(I) (arb. units.)', fontdict=self.PLOT_LABEL)
+            plt.ylabel(r'log(I) (arb. units.)', fontdict=self.PLOT_LABEL)
         else:
-            plt.ylabel('Intensity (arb. units.)', fontdict=self.PLOT_LABEL)
-        plt.title('SAXS Subtracted Profiles')
+            plt.ylabel(r'Intensity (arb. units.)', fontdict=self.PLOT_LABEL)
+        # box = ax.get_position()
+        # ax.set_position([box.x0, box.y0, box.width * 1.6, box.height])
+        lgd = ax.legend(loc='center left', bbox_to_anchor=(1, 0.5),
+                        frameon=False, prop={'size':self.LABEL_SIZE})
+        plt.title(r'SAXS Subtracted Profiles')
         # plt.tight_layout()
 
         # +++++++++++++++++++++ SAVE AND/OR DISPLAY +++++++++++++++++++++ #
@@ -161,9 +170,9 @@ class DifferenceAnalysis(object):
                 fig_path = os.path.join(directory, filename)
             else:
                 fig_path = filename
-            plt.savefig(fig_path, dpi=600)
+            plt.savefig(fig_path, dpi=600, bbox_extra_artists=(lgd,), bbox_inches='tight')
         if display:
-            plt.show()
+            plt.show(fig)
 
     def plot_relative_diff(self, baseline_dat=None,
                            display=True, save=False, filename=None, directory=None):
@@ -171,23 +180,25 @@ class DifferenceAnalysis(object):
         self.PLOT_NUM += 1
 
         # ++++++++++++ CALCULATE RELATIVE DIFFERENCE RATIO ++++++++++++++ #
-        if baseline_dat:
-            baseline_dict = get_data_dict(baseline_dat)
-        else:
-            baseline_dict = self.data_dict_list[0]
-            self.calc_relative_diff(self, baseline_dict)
+        self.calc_relative_diff(baseline_dat=baseline_dat)
 
         # ++++++++++++++++++++++++++++++ PLOT +++++++++++++++++++++++++++ #
-        plt.figure(self.PLOT_NUM)
+        fig = plt.figure(self.PLOT_NUM)
+        ax = plt.subplot(111)
         for data_dict in self.data_dict_list:
             plt.plot(data_dict['q'], data_dict['relative_diff'],
                      label=data_dict['filename'],
-                     linestyle=data_dict['linestyle'], linewidth=1.5)
+                     linestyle=data_dict['linestyle'], linewidth=1)
         plt.xlabel(r'Scattering Vector, q ($nm^{-1}$)', fontdict=self.PLOT_LABEL)
-        plt.ylabel('Relative Ratio', fontdict=self.PLOT_LABEL)
-        plt.legend(loc='upper right', frameon=False, prop={'size':self.LABEL_SIZE})
-        plt.title('Relative Difference Ratio Analysis')
-        # plt.tight_layout()
+        plt.ylabel(r'Relative Ratio (%)', fontdict=self.PLOT_LABEL)
+        # box = ax.get_position()
+        # ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
+        lgd = ax.legend(loc='center left', bbox_to_anchor=(1, 0.5),
+                        frameon=False, prop={'size':self.LABEL_SIZE})
+        # lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15),
+        #                 frameon=False, prop={'size':self.LABEL_SIZE})
+        # ax.legend().draggable()
+        plt.title(r'Relative Difference Ratio Analysis')
 
         # +++++++++++++++++++++ SAVE AND/OR DISPLAY +++++++++++++++++++++ #
         if filename:
@@ -201,6 +212,6 @@ class DifferenceAnalysis(object):
                 fig_path = os.path.join(directory, filename)
             else:
                 fig_path = filename
-            plt.savefig(fig_path, dpi=600)
+            plt.savefig(fig_path, dpi=600, bbox_extra_artists=(lgd,), bbox_inches='tight')
         if display:
-            plt.show()
+            plt.show(fig)
