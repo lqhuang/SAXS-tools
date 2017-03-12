@@ -15,15 +15,15 @@ def plot_CorMapAnalysis(root_directory, scale=False, crop=False, subtract=True, 
     exists_frames_directory = os.path.exists(os.path.join(root_directory, 'Frames'))
     exists_valid_frames_directory = os.path.exists(os.path.join(root_directory, 'Valid_Frames'))
     if exists_frames_directory and exists_valid_frames_directory:
-        file_location = os.path.join(root_directory, 'Frames', '*')
+        file_location = os.path.join(root_directory, 'Frames')
     elif exists_frames_directory and not exists_valid_frames_directory:
-        file_location = os.path.join(root_directory, 'Frames', '*')
+        file_location = os.path.join(root_directory, 'Frames')
     elif not exists_frames_directory and exists_valid_frames_directory:
-        file_location = os.path.join(root_directory, 'Valid_Frames', '*')
+        file_location = os.path.join(root_directory, 'Valid_Frames')
     else:
         raise ValueError('Do not exist frames directory')
     # glob files
-    file_list = glob.glob(file_location)
+    file_list = glob.glob(os.path.join(file_location, '*'))
     buffer_dat_list = list()
     data_dat_list = list()
     frame_num_list = list()

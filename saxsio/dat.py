@@ -127,7 +127,7 @@ def scale_curve(curve, ref_curve, qmin, qmax):
     scaling_I = scaling_factor * curve_I
     return scaling_I
 
-def crop_curve(curve, qmin=0, qmax=-1):
+def crop_curve(curve, qmin=0.0, qmax=-1.0):
     """
     Crop 1D scatter curve
     input:
@@ -143,9 +143,9 @@ def crop_curve(curve, qmin=0, qmax=-1):
     else:
         qmax_idx = np.argmin(np.abs(curve_q - qmax))
     
-    curve_q = curve[0][qmin_idx:qmax_idx]
-    curve_I = curve[1][qmin_idx:qmax_idx]
-    curve_E = curve[2][qmin_idx:qmax_idx]
+    curve_q = np.asarray(curve[0][qmin_idx:qmax_idx])
+    curve_I = np.asarray(curve[1][qmin_idx:qmax_idx])
+    curve_E = np.asarray(curve[2][qmin_idx:qmax_idx])
 
     return curve_q, curve_I, curve_E
 
