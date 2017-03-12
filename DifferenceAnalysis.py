@@ -16,7 +16,7 @@ def get_data_dict(dat_file):
     data_dict['q'] = q
     data_dict['I'] = intensity
     data_dict['E'] = error
-    data_dict['linestyle'] = '-'
+    # data_dict['linestyle'] = '-'
     return data_dict
 
 class DifferenceAnalysis(object):
@@ -129,7 +129,7 @@ class DifferenceAnalysis(object):
         self.keys = self.data_dict_list[0].keys()
 
     # ----------------------- PLOT ------------------------#
-    def plot_profiles(self, log_intensity=True,
+    def plot_profiles(self, log_intensity=True, dash_line_index=None,
                       display=True, save=False, filename=None, directory=None):
         ###########   SAXS Profiles  ####################
         self.PLOT_NUM += 1
@@ -142,10 +142,14 @@ class DifferenceAnalysis(object):
             if 'log_I' not in self.keys:
                 self.calc_log_intensity()
             intensity_key = 'log_I'
-        for data_dict in self.data_dict_list:
+        for i, data_dict in enumerate(self.data_dict_list):
+            if (i+1) in dash_line_index:
+                linestyle = '--'
+            else:
+                linestyle = '-'
             plt.plot(data_dict['q'], data_dict[intensity_key],
                      label=data_dict['label'],
-                     linestyle=data_dict['linestyle'], linewidth=1)
+                     linestyle=linestyle, linewidth=1)
         plt.xlabel(r'Scattering Vector, q ($nm^{-1}$)')
         if log_intensity:
             plt.ylabel(r'log(I) (arb. units.)', fontdict=self.PLOT_LABEL)
@@ -174,7 +178,7 @@ class DifferenceAnalysis(object):
         if display:
             plt.show(fig)
 
-    def plot_relative_diff(self, baseline_dat=None,
+    def plot_relative_diff(self, baseline_dat=None, dash_line_index=None,
                            display=True, save=False, filename=None, directory=None):
         ###########   Relative Ratio  ####################
         self.PLOT_NUM += 1
@@ -185,19 +189,24 @@ class DifferenceAnalysis(object):
         # ++++++++++++++++++++++++++++++ PLOT +++++++++++++++++++++++++++ #
         fig = plt.figure(self.PLOT_NUM)
         ax = plt.subplot(111)
-        for data_dict in self.data_dict_list:
+        for i, data_dict in enumerate(self.data_dict_list):
+            if (i+1) in dash_line_index:
+                linestyle = '--'
+            else:
+                linestyle = '-'
             plt.plot(data_dict['q'], data_dict['relative_diff'],
-                     label=data_dict['filename'],
-                     linestyle=data_dict['linestyle'], linewidth=1)
-        plt.xlabel(r'Scattering Vector, q ($nm^{-1}$)', fontdict=self.PLOT_LABEL)
-        plt.ylabel(r'Relative Ratio (%)', fontdict=self.PLOT_LABEL)
+                     label=data_dict['label'],
+                     linestyle=linestyle, linewidth=1)
+        plt.xlabel(r'Scattering Vector, q ($nm^{-1}$)')
+        plt.ylabel(r'Relative Ratio (%)')
         # box = ax.get_position()
         # ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
         lgd = ax.legend(loc='center left', bbox_to_anchor=(1, 0.5),
                         frameon=False, prop={'size':self.LABEL_SIZE})
         # lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15),
         #                 frameon=False, prop={'size':self.LABEL_SIZE})
-        # ax.legend().draggable()
+        if display:
+            ax.legend().draggable()
         plt.title(r'Relative Difference Ratio Analysis')
 
         # +++++++++++++++++++++ SAVE AND/OR DISPLAY +++++++++++++++++++++ #
