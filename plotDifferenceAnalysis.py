@@ -12,12 +12,13 @@ def plot_DifferenceAnalysis(root_directory, save_figures=False, figures_director
     if not figures_directory:
         figures_directory = os.path.join(root_directory, 'Figures')
     EXP_prefix = os.path.basename(root_directory)
-    scat_obj.plot_profiles(log_intensity=True, display=False,
-                           save=save_figures, filename=EXP_prefix+'_saxs_profiles.png',
-                           directory=figures_directory)
     scat_obj.plot_relative_diff(display=False,
                                 save=save_figures, filename=EXP_prefix+'_relative_ratio.png',
                                 directory=figures_directory)
+    scat_obj.plot_profiles(log_intensity=True, display=False,
+                           save=save_figures, filename=EXP_prefix+'_saxs_profiles.png',
+                           directory=figures_directory)
+
     close('all')
 
 if __name__ == '__main__':
