@@ -9,27 +9,22 @@ PLOT_LABEL = {'family': 'serif',
                 'size': 16}
 plt.rc('font', PLOT_LABEL)
 
-
+class RelativeRatioAnalysis(object):
+    
+    def __init__():
 
 def plot_RelativeRatio(root_location, scale=True, subtract=False, save_figures=True, figures_directory=None):
     
     if not figures_directory:
+        fig_path = 'Figures'
         figures_directory = os.path.join(root_location, 'Figures')
 
-    save_prefix = '/Users/lqhuang/Documents/CSRC/Data/SSRF_MagR/Analysis/Experiments/20161211-EXP/CanXie'
-
+    """
     color_dict = {0:'b', 1:'g', 2:'r', 3:'c'}
-        # add signal to enable CTRL-C
-    import signal
-    signal.signal(signal.SIGINT, signal.SIG_DFL)
-    argv = docopt(__doc__)
-    ref_dat = argv['--ref']
-    raw_dats_1 = argv['<dat_files_1>'].split(',')
-    raw_dats_2 = argv['<dat_files_2>'].split(',')
-    print(raw_dats_2)
     qmin = float(argv['--qmin'])
     qmax = float(argv['--qmax'])
     diff_mode = argv['--diff-mode']
+    """
     
     ref_qs, ref_Is, ref_Es = load_RAW_dat(ref_dat)
     ref = {}
@@ -46,49 +41,46 @@ def plot_RelativeRatio(root_location, scale=True, subtract=False, save_figures=T
 
     q_filter = lambda x: x<0.10
     
-    # making plots
-    fig1 = plt.figure(1)
+def plot_profiles():
+    ###########   SAXS Profiles  ####################
+    fig = plt.figure()
+    if log_intensity:
+        intensity = np.log(intensity)
     for i, data in enumerate(data_list_1):
         q = data['qs']
         q_len = len(list(filter(q_filter, q)))
         plt.plot(data['qs'][0:q_len], data['scaling_Is'][0:q_len], label=data['filename'], color=color_dict[i], linewidth=1.5)
-    for i, data in enumerate(data_list_2):
+    plt.legend(loc='upper right', frameon=False, prop={'size':14})
+    # plt.xlim([0, 0.10])
+    plt.xlim([0, 0.05])
+    plt.xlabel(r'Scattering Vector, q ($nm^{-1}$)')
+    if log_intensity:
+        plt.ylabel('log(I) (arb. units.)', fontdict=PLOT_LABEL)
+    else:
+        plt.ylabel('Intensity (arb. units.)', fontdict=PLOT_LABEL)
+    plt.title('SAXS profiles')
+    # plt.tight_layout()
+    fig_path = os.path.join(figures_directory, EXP_prefix+'SAXS_profiles.png')
+    plt.savefig(fig_path, dpi=600)
+    plt.close(fig)
+
+def plot_relative_ratio():
+    ###########   Relative Ratio  ####################
+    fig = plt.figure()
+    for i, data in enumerate(data_list_1):
         q = data['qs']
         q_len = len(list(filter(q_filter, q)))
-        plt.plot(data['qs'][0:q_len], data['scaling_Is'][0:q_len], label=data['filename'], linestyle='--', color=color_dict[i], linewidth=1.5)
+        plt.plot(data['qs'][0:q_len], data['rel_scaling_diff'][0:q_len], label=data['filename'])
+    plt.xlabel(r'Scattering Vector, q ($nm^{-1}$)')
+    plt.ylabel('Relative Ratio')
     plt.legend(loc='upper right', frameon=False, prop={'size':14})
     # plt.xlim([0, 0.10])
     plt.xlim([0, 0.05])
-    plt.xlabel(r'Scattering Vector, q ($nm^{-1}$)')
-    plt.ylabel('Intensity')
-    plt.title('SAXS profiles after scaling')
+    plt.title('Relative Ratio Analysis')
+    fig_path = os.path.join(figures_directory, EXP_prefix+'_relative_ratio.png')
     # plt.tight_layout()
-    plt.savefig(os.path.join(save_prefix, 'EXP27-SAXS_profiles_of_two_stages.png'), dpi=600)
-
-    fig2 = plt.figure(2)
-    for i, data in enumerate(data_list_1):
-        if diff_mode == 'absolute':
-            plt.plot(data['qs'], data['abs_scaling_diff'], label=data['filename'])
-        elif diff_mode == 'relative':
-            q = data['qs']
-            q_len = len(list(filter(q_filter, q)))
-            plt.plot(data['qs'][0:q_len], data['rel_scaling_diff'][0:q_len], label=data['filename'])
-    for i, data in enumerate(data_list_2):
-        if diff_mode == 'absolute':
-            plt.plot(data['qs'], data['abs_scaling_diff'], label=data['filename'], linestyle='--', color=color_dict[i], linewidth=1.5)
-        elif diff_mode == 'relative':
-            q = data['qs']
-            q_len = len(list(filter(q_filter, q)))
-            plt.plot(data['qs'][0:q_len], data['rel_scaling_diff'][0:q_len], label=data['filename'], linestyle='--', color=color_dict[i], linewidth=1.5)
-    plt.xlabel(r'Scattering Vector, q ($nm^{-1}$)')
-    plt.ylabel('relative ratio')
-    plt.legend(loc='upper right', frameon=False, prop={'size':14})
-    # plt.xlim([0, 0.10])
-    plt.xlim([0, 0.05])
-    plt.title('%s difference after scaling' % diff_mode)
-    plt.savefig(os.path.join(save_prefix, 'EXP27-relative_ratio_of_two_stages.png'), dpi=600)
-    # plt.tight_layout()
-    # plt.show()
+    plt.savefig(fig_path, dpi=600)
+    plt.close(fig)
 
 def get_data_list(raw_dats, ref):
     data_list = []
@@ -116,11 +108,16 @@ def get_data_list(raw_dats, ref):
 
 
 if __name__ == '__main__':
-    working_directory = r'E:\2017\201703\20170310'
     parser = argparse.ArgumentParser()
-    parser.add_argument('-r', '--root_directory', help='Root directory for EXPERIMENTS data',
-                        default=os.path.join(working_directory, 'EXP13'))
+    parser.add_argument('-r', '--root_directory', help='Root directory for EXPERIMENTS data')
+    parser.add_argument('-f', '--figures_directory',
+                        help='Figures directory in root directory for CorMap Analysis (default=Figures)',
+                        default='Figures')
+    parser.add_argument('--scale', help='Whether to scale curves (default=False)',  type=bool, default=False)
     args = parser.parse_args()
     root_location = args.root_directory
-    plot_RelativeRatio(root_location, scale=True, subtract=True, save_figures=True)
+    figures_directory = os.path.join(root_location, args.figures_directory)
+    scale = args.scale
+    plot_RelativeRatio(root_location, scale=True,
+                       save_figures=True, figures_directory=figures_directory)
 
