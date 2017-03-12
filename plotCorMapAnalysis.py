@@ -9,17 +9,17 @@ from saxsio import dat
 from utils import find_common_string_from_list
 
 
-def plot_CorMapAnalysis(root_location, frames_directory=None, scale=False, crop=False, subtract=True, skip=0,
+def plot_CorMapAnalysis(root_directory, scale=False, crop=False, subtract=True, skip=0,
                         buffer_dat=None, ref_dat=None, save_figures=False, figures_directory=None):
     # check Frames directory
-    exists_frames_directory = os.path.exists(os.path.join(root_location, 'Frames'))
-    exists_valid_frames_directory = os.path.exists(os.path.join(root_location, 'Valid_Frames'))
+    exists_frames_directory = os.path.exists(os.path.join(root_directory, 'Frames'))
+    exists_valid_frames_directory = os.path.exists(os.path.join(root_directory, 'Valid_Frames'))
     if exists_frames_directory and exists_valid_frames_directory:
-        file_location = os.path.join(root_location, 'Frames', '*')
+        file_location = os.path.join(root_directory, 'Frames', '*')
     elif exists_frames_directory and not exists_valid_frames_directory:
-        file_location = os.path.join(root_location, 'Frames', '*')
+        file_location = os.path.join(root_directory, 'Frames', '*')
     elif not exists_frames_directory and exists_valid_frames_directory:
-        file_location = os.path.join(root_location, 'Valid_Frames', '*')
+        file_location = os.path.join(root_directory, 'Valid_Frames', '*')
     else:
         raise ValueError('Do not exist frames directory')
     # glob files
@@ -48,7 +48,7 @@ def plot_CorMapAnalysis(root_location, frames_directory=None, scale=False, crop=
     data_dat_list = data_dat_list[0+skip:]
     print(r'ref dat file: ', ref_dat)
     print(r'buffer dat file:', buffer_dat)
-    subtract_directory = os.path.join(root_location, 'Subtract')
+    subtract_directory = os.path.join(root_directory, 'Subtract')
     subtract_dat_list = dat.subtract_curves(data_dat_list, buffer_dat, subtract_directory, prefix='data',
                                             scale=scale, ref_dat=ref_dat, qmin=0.10, qmax=0.15,
                                             crop=crop, crop_qmin=0.0, crop_qmax=0.10)
@@ -56,8 +56,8 @@ def plot_CorMapAnalysis(root_location, frames_directory=None, scale=False, crop=
     subtract_dat_location = find_common_string_from_list(subtract_dat_list)
     scat_obj = ScatterAnalysis.from_1d_curves(subtract_dat_location + '*')
     if not figures_directory:
-        figures_directory = os.path.join(root_location, 'Figures')
-    EXP_prefix = os.path.basename(root_location)
+        figures_directory = os.path.join(root_directory, 'Figures')
+    EXP_prefix = os.path.basename(root_directory)
     scat_obj.plot_cormap(display=False, save=save_figures, filename=EXP_prefix+'_cormap',
                          directory=figures_directory)
     scat_obj.plot_heatmap(display=False, save=save_figures, filename=EXP_prefix+'_heatmap',
@@ -82,10 +82,10 @@ if __name__ == '__main__':
     parser.add_argument('--scale', help='Whether to scale curves (default=False)',  type=bool, default=False)
     parser.add_argument('--crop', help='Whether to crop curves (default=False)',  type=bool, default=False)
     args = parser.parse_args()
-    root_location = args.root_directory
+    root_directory = args.root_directory
     skip = args.skip
     scale = args.scale
     crop = args.crop
-    figures_directory = os.path.join(root_location, args.figures_directory)
-    plot_CorMapAnalysis(root_location, scale=scale, crop=crop, subtract=True, skip=skip,
+    figures_directory = os.path.join(root_directory, args.figures_directory)
+    plot_CorMapAnalysis(root_directory, scale=scale, crop=crop, subtract=True, skip=skip,
                         save_figures=True, figures_directory=figures_directory)
