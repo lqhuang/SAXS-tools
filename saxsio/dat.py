@@ -143,9 +143,9 @@ def crop_curve(curve, qmin=0.0, qmax=-1.0):
     else:
         qmax_idx = np.argmin(np.abs(curve_q - qmax))
     
-    curve_q = np.asarray(curve[0][qmin_idx:qmax_idx])
-    curve_I = np.asarray(curve[1][qmin_idx:qmax_idx])
-    curve_E = np.asarray(curve[2][qmin_idx:qmax_idx])
+    curve_q = np.asarray(curve[0][qmin_idx:qmax_idx+1])
+    curve_I = np.asarray(curve[1][qmin_idx:qmax_idx+1])
+    curve_E = np.asarray(curve[2][qmin_idx:qmax_idx+1])
 
     return curve_q, curve_I, curve_E
 
