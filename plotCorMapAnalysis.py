@@ -8,7 +8,8 @@ from CorMapAnalysis import ScatterAnalysis
 from saxsio import dat
 from utils import find_common_string_from_list
 
-def plot_CorMapAnalysis(root_location, frames_directory=None, scale=False, subtract=True, skip=0,
+
+def plot_CorMapAnalysis(root_location, frames_directory=None, scale=False, crop=False, subtract=True, skip=0,
                         buffer_dat=None, ref_dat=None, save_figures=False, figures_directory=None):
     # check Frames directory
     exists_frames_directory = os.path.exists(os.path.join(root_location, 'Frames'))
@@ -49,7 +50,8 @@ def plot_CorMapAnalysis(root_location, frames_directory=None, scale=False, subtr
     print(r'buffer dat file:', buffer_dat)
     subtract_directory = os.path.join(root_location, 'Subtract')
     subtract_dat_list = dat.subtract_curves(data_dat_list, buffer_dat, subtract_directory, prefix='data',
-                                            scale=scale, ref_dat=ref_dat, qmin=0.15, qmax=0.20)
+                                            scale=scale, ref_dat=ref_dat, qmin=0.10, qmax=0.15,
+                                            crop=crop, crop_qmin=0.0, crop_qmax=0.10)
     # plot CorMap
     subtract_dat_location = find_common_string_from_list(subtract_dat_list)
     scat_obj = ScatterAnalysis.from_1d_curves(subtract_dat_location + '*')
@@ -78,10 +80,12 @@ if __name__ == '__main__':
                         default='Figures')
     parser.add_argument('--skip', help='Frames need to be skipped (default=1)', type=int, default=1)
     parser.add_argument('--scale', help='Whether to scale curves (default=False)',  type=bool, default=False)
+    parser.add_argument('--crop', help='Whether to crop curves (default=False)',  type=bool, default=False)
     args = parser.parse_args()
     root_location = args.root_directory
     skip = args.skip
     scale = args.scale
+    crop = args.crop
     figures_directory = os.path.join(root_location, args.figures_directory)
-    plot_CorMapAnalysis(root_location, scale=scale, subtract=True, skip=skip,
+    plot_CorMapAnalysis(root_location, scale=scale, crop=crop, subtract=True, skip=skip,
                         save_figures=True, figures_directory=figures_directory)

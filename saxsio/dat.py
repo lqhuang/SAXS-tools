@@ -127,6 +127,28 @@ def scale_curve(curve, ref_curve, qmin, qmax):
     scaling_I = scaling_factor * curve_I
     return scaling_I
 
+def crop_curve(curve, qmin=0, qmax=-1):
+    """
+    Crop 1D scatter curve
+    input:
+        curve: (q, I, E)
+        qmin:
+        qmax:
+    output:
+    """
+    curve_q = curve[0]
+    qmin_idx = np.argmin(np.abs(curve_q - qmin))
+    if qmax < 0:
+        qmax_idx = np.argmax(curve_q)
+    else:
+        qmax_idx = np.argmin(np.abs(curve_q - qmax))
+    
+    curve_q = curve[0][qmin_idx:qmax_idx]
+    curve_I = curve[1][qmin_idx:qmax_idx]
+    curve_E = curve[2][qmin_idx:qmax_idx]
+
+    return curve_q, curve_I, curve_E
+
 def averge_curves(curves_dat_list):
     pass
     if not os.path.exists(directory):
@@ -141,14 +163,21 @@ def averge_curves(curves_dat_list):
     return average_dat_list
 
 def subtract_curves(RAW_dats_list, buffer_dat, directory, prefix='data',
-                    scale=False, ref_dat=None, qmin=0.20, qmax=0.25):
+                    scale=False, ref_dat=None, qmin=0.20, qmax=0.25,
+                    crop=False, crop_qmin=0.0, crop_qmax=-1):
     """all dats should be original format from software RAW"""
     if not os.path.exists(directory):    
         os.mkdir(directory)
     
     buffer_q, buffer_I, buffer_E = load_RAW_dat(buffer_dat)
+    if crop:
+        buffer_q, buffer_I, buffer_E = crop_curve((buffer_q, buffer_I, buffer_E),
+                                                  qmin=crop_qmin, qmax=crop_qmax)
     if ref_dat:
         ref_q, ref_I, ref_E = load_RAW_dat(ref_dat)
+        if crop:
+            ref_q, ref_I, ref_E = crop_curve((ref_q, ref_I, ref_E),
+                                             qmin=crop_qmin, qmax=crop_qmax)
     else:
         print('ref data not load')
     
@@ -156,6 +185,8 @@ def subtract_curves(RAW_dats_list, buffer_dat, directory, prefix='data',
     for i, filename in enumerate(RAW_dats_list, 1):
         file_path = os.path.join(directory, 'S_' + str(prefix) + '_' + str(i).zfill(5) + '.dat')
         qs, Is, Es = load_RAW_dat(filename)
+        if crop:
+            qs, Is, Es = crop_curve((qs, Is, Es), qmin=crop_qmin, qmax=crop_qmax)
         if scale:
             scaling_I = scale_curve((qs, Is), (ref_q, ref_I), qmin=qmin, qmax=qmax)
         else:
