@@ -2,7 +2,7 @@ import os
 import glob
 import numpy as np
 from matplotlib import pyplot as plt
-import matplotlib as mpl
+import seaborn as sns
 from saxsio import dat
 
 
@@ -31,6 +31,9 @@ class DifferenceAnalysis(object):
     LABEL_SIZE = 14
     plt.rc('font', **PLOT_LABEL)
     # print(plt.style.available)
+    # plt.style.use('classic')
+    # plt.style.use('ggplot')
+    sns.set_style("whitegrid")
     plt.rc('text', **{'latex.unicode' : True})
 
     PLOT_NUM = 0
@@ -54,51 +57,65 @@ class DifferenceAnalysis(object):
         file_location = os.path.join(root_directory, 'Simple_Results')
         file_list = glob.glob(file_location)
         # read data
-        buffer_dat_list = list()
-        average_dat_list = list()
-        subtracted_dat_list = list()
-        for fname in file_list:
-            if 'buffer' in fname.lower():
-                buffer_dat_list.append(fname)
-            elif fname.lower().startswith('a'):
-                average_dat_list.append(fname)
-            elif fname.lower().startswith('s'):
-                subtracted_dat_list.append(fname)
-        # scale and subtract
-        buffer = dict()
-        if buffer_dat:
-            buffer['q'], buffer['I'], buffer['E'] = dat.load_RAW_dat(buffer_dat)
-        else:
-            if len(buffer_dat_list) < 1:
-                raise ValueError('Do not exist buffer, please specify a buffer file')
-            elif len(buffer_dat_list) == 1:
-                buffer['q'], buffer['I'], buffer['E'] = dat.load_RAW_dat(buffer_dat_list[0])
-            else:
-                pass
-                # buffer_dat = dat.average_curves(buffer_dat_list, skip=skip)
-
-        if subtract:
-            pass
-        else:
-            if baseline_dat:
-                baseline_dict = get_data_dict(baseline_dat)
-            else:
-                baseline_dict = get_data_dict(subtracted_dat_list[0])
 
         cls = None
         return cls
 
     @classmethod
-    def from_subtracted_dats(self, subtracted_dat_location):
+    def from_average_dats(self, average_dat_location, buffer_dat=None,
+                          scale=False, ref_dat=None):
+        # glob files
+        file_list = glob.glob(average_dat_location)
+        if '*' in average_dat_location:
+            location_str_list = average_dat_location.split(os.path.sep)[0:-1]
+            temp_directory = os.path.sep.join(location_str_list)
+        if len(file_list) == 0:
+            raise FileNotFoundError('Do not find dat files')
+        average_dat_list = [fname for fname in file_list \
+                            if fname.split(os.path.sep)[-1].lower().startswith('a')]
+        if buffer_dat:
+            buffer_q, buffer_I, buffer_E = dat.load_RAW_dat(buffer_dat)
+        else:
+            buffer_dat = [fname for fname in file_list if 'buffer' in fname.lower()]
+            assert len(buffer_dat) == 1
+            buffer_q, buffer_I, buffer_E = dat.load_RAW_dat(buffer_dat[0])
+        # subtract
+        if scale:
+            if not ref_dat:
+                ref_dat = average_dat_list[0]
+            raise NotImplementedError
+        else:
+            temp_file_list = list()
+            for dat_file in average_dat_list:
+                q, intensity, error = dat.load_RAW_dat(dat_file)
+                intensity -= buffer_I
+                subtracted_dat = os.path.join(temp_directory, \
+                                                   'temp_S_' + os.path.basename(dat_file))
+                temp_file_list.append(subtracted_dat)
+                dat.write_dat(subtracted_dat, (q, intensity, error), extra_info=subtracted_dat)
+
+            data_dict_list = [get_data_dict(dat_file) for dat_file in temp_file_list]
+            remove = [os.remove(dat_file) for dat_file in temp_directory]
+        cls = DifferenceAnalysis(data_dict_list)
+
+        return cls
+
+    @classmethod
+    def from_subtracted_dats(self, subtracted_dat_location, from_average=True):
         # glob files
         file_list = glob.glob(subtracted_dat_location)
-        assert len(file_list) != 0
+        if len(file_list) == 0:
+            raise FileNotFoundError('Do not find dat files')
         # read data
         subtracted_dat_list = [fname for fname in file_list \
                                if fname.split(os.path.sep)[-1].lower().startswith('s')]
-        assert len(subtracted_dat_list) != 0
-        data_dict_list = [get_data_dict(dat_file) for dat_file in subtracted_dat_list]
-        cls = DifferenceAnalysis(data_dict_list)
+        if len(subtracted_dat_list) != 0:
+            data_dict_list = [get_data_dict(dat_file) for dat_file in subtracted_dat_list]
+            cls = DifferenceAnalysis(data_dict_list)
+        elif from_average and len(subtracted_dat_list) == 0:
+            cls = DifferenceAnalysis.from_average_dats(subtracted_dat_location, buffer_dat=None)
+        elif not from_average and len(subtracted_dat_list) == 0:
+            raise ValueError('Do not exist subtracted dat files')
         return cls
 
     # ----------------------------------------------------------------------- #
@@ -129,7 +146,7 @@ class DifferenceAnalysis(object):
         self.keys = self.data_dict_list[0].keys()
 
     # ----------------------- PLOT ------------------------#
-    def plot_profiles(self, log_intensity=True, dash_line_index=None,
+    def plot_profiles(self, log_intensity=True, dash_line_index=(None,),
                       display=True, save=False, filename=None, directory=None):
         ###########   SAXS Profiles  ####################
         self.PLOT_NUM += 1
@@ -143,7 +160,7 @@ class DifferenceAnalysis(object):
                 self.calc_log_intensity()
             intensity_key = 'log_I'
         for i, data_dict in enumerate(self.data_dict_list):
-            if (i+1) in dash_line_index:
+            if i+1 in dash_line_index:
                 linestyle = '--'
             else:
                 linestyle = '-'
@@ -155,8 +172,8 @@ class DifferenceAnalysis(object):
             plt.ylabel(r'log(I) (arb. units.)', fontdict=self.PLOT_LABEL)
         else:
             plt.ylabel(r'Intensity (arb. units.)', fontdict=self.PLOT_LABEL)
-        # box = ax.get_position()
-        # ax.set_position([box.x0, box.y0, box.width * 1.6, box.height])
+        box = ax.get_position()
+        ax.set_position([box.x0, box.y0, box.width * 1.1, box.height])
         lgd = ax.legend(loc='center left', bbox_to_anchor=(1, 0.5),
                         frameon=False, prop={'size':self.LABEL_SIZE})
         plt.title(r'SAXS Subtracted Profiles')
@@ -178,7 +195,7 @@ class DifferenceAnalysis(object):
         if display:
             plt.show(fig)
 
-    def plot_relative_diff(self, baseline_dat=None, dash_line_index=None,
+    def plot_relative_diff(self, baseline_dat=None, dash_line_index=(None,),
                            display=True, save=False, filename=None, directory=None):
         ###########   Relative Ratio  ####################
         self.PLOT_NUM += 1
@@ -190,7 +207,7 @@ class DifferenceAnalysis(object):
         fig = plt.figure(self.PLOT_NUM)
         ax = plt.subplot(111)
         for i, data_dict in enumerate(self.data_dict_list):
-            if (i+1) in dash_line_index:
+            if i+1 in dash_line_index:
                 linestyle = '--'
             else:
                 linestyle = '-'
@@ -199,8 +216,8 @@ class DifferenceAnalysis(object):
                      linestyle=linestyle, linewidth=1)
         plt.xlabel(r'Scattering Vector, q ($nm^{-1}$)')
         plt.ylabel(r'Relative Ratio (%)')
-        # box = ax.get_position()
-        # ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
+        box = ax.get_position()
+        ax.set_position([box.x0, box.y0, box.width * 1.1, box.height])
         lgd = ax.legend(loc='center left', bbox_to_anchor=(1, 0.5),
                         frameon=False, prop={'size':self.LABEL_SIZE})
         # lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15),
