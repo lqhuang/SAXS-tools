@@ -4,8 +4,8 @@ from saxsio import dat
 from DifferenceAnalysis import DifferenceAnalysis
 from matplotlib.pyplot import close
 
-def plot_DifferenceAnalysis(root_directory, display=False, dash_line_index=None,
-                            save_figures=False, figures_directory=None):
+def plot_DifferenceAnalysis(root_directory, display=False, dash_line_index=(None,),
+                            save_figures=True, fig_format='png', figures_directory=None):
 
     file_location = os.path.join(root_directory, 'Simple_Results')
     scat_obj = DifferenceAnalysis.from_subtracted_dats(os.path.join(file_location, '*'))
@@ -14,10 +14,10 @@ def plot_DifferenceAnalysis(root_directory, display=False, dash_line_index=None,
         figures_directory = os.path.join(root_directory, 'Figures')
     EXP_prefix = os.path.basename(root_directory)
     scat_obj.plot_relative_diff(display=display, dash_line_index=dash_line_index,
-                                save=save_figures, filename=EXP_prefix+'_relative_ratio.png',
+                                save=save_figures, filename=EXP_prefix+'_relative_ratio.'+fig_format,
                                 directory=figures_directory)
     scat_obj.plot_profiles(log_intensity=True, display=False, dash_line_index=dash_line_index,
-                           save=save_figures, filename=EXP_prefix+'_saxs_profiles.png',
+                           save=save_figures, filename=EXP_prefix+'_saxs_profiles.'+fig_format,
                            directory=figures_directory)
 
     close('all')
@@ -39,7 +39,7 @@ if __name__ == '__main__':
         dash_line_index = [int(idx) for idx in dash_line_index]
         print('dash line index:', dash_line_index)
     except AttributeError:
-        dash_line_index = [-1, -1]
+        dash_line_index = (None,)
     display = args.display
     plot_DifferenceAnalysis(root_directory, dash_line_index=dash_line_index,
                             display=display,
