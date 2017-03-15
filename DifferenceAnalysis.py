@@ -2,7 +2,7 @@ import os
 import glob
 import numpy as np
 from matplotlib import pyplot as plt
-import seaborn as sns
+import matplotlib as mpl
 from saxsio import dat
 
 
@@ -20,20 +20,29 @@ def get_data_dict(dat_file):
     return data_dict
 
 class DifferenceAnalysis(object):
-
     # ----------------------------------------------------------------------- #
     #                         CLASS VARIABLES                                 #
     # ----------------------------------------------------------------------- #
-    # mpl.rc('font', family='sans-serif', weight='normal', size=12)
+    # mpl.rc('font', family='sans-serif', weight='normal', size=16)
     PLOT_LABEL = {'family' : 'sans-serif', # 'sans-serif',
                   'weight' : 'normal',
-                  'size' : 16}
+                  'size' : 18}
     LABEL_SIZE = 14
-    plt.rc('font', **PLOT_LABEL)
+    # plt.rc('font', **PLOT_LABEL)
     # print(plt.style.available)
-    # plt.style.use('classic')
+    plt.style.use('classic')
+    # plt.style.use('seaborn-bright')
+    # plt.style.use('seaborn')
+    # plt.style.use('seaborn-notebook')
+    # plt.style.use('seaborn-white')
+    # plt.style.use('seaborn-poster')
+    # plt.style.use('seaborn-muted')
+    # plt.style.use('seaborn-paper')
+    # plt.style.use('bmh')
+    # sns.set_style("whitegrid")
+    # plt.style.use('seaborn-pastel')
     # plt.style.use('ggplot')
-    sns.set_style("whitegrid")
+
     plt.rc('text', **{'latex.unicode' : True})
 
     PLOT_NUM = 0
@@ -167,7 +176,7 @@ class DifferenceAnalysis(object):
             plt.plot(data_dict['q'], data_dict[intensity_key],
                      label=data_dict['label'],
                      linestyle=linestyle, linewidth=1)
-        plt.xlabel(r'Scattering Vector, q ($nm^{-1}$)')
+        plt.xlabel(r'Scattering Vector, q ($nm^{-1}$)', fontdict=self.PLOT_LABEL)
         if log_intensity:
             plt.ylabel(r'log(I) (arb. units.)', fontdict=self.PLOT_LABEL)
         else:
@@ -214,8 +223,8 @@ class DifferenceAnalysis(object):
             plt.plot(data_dict['q'], data_dict['relative_diff'],
                      label=data_dict['label'],
                      linestyle=linestyle, linewidth=1)
-        plt.xlabel(r'Scattering Vector, q ($nm^{-1}$)')
-        plt.ylabel(r'Relative Ratio (%)')
+        plt.xlabel(r'Scattering Vector, q ($nm^{-1}$)', fontdict=self.PLOT_LABEL)
+        plt.ylabel(r'Relative Ratio (%)', fontdict=self.PLOT_LABEL)
         box = ax.get_position()
         ax.set_position([box.x0, box.y0, box.width * 1.1, box.height])
         lgd = ax.legend(loc='center left', bbox_to_anchor=(1, 0.5),
