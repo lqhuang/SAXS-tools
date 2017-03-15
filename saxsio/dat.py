@@ -95,12 +95,13 @@ def write_dat(filepath, RAW_dat, extra_info=None):
     """
     # check input
     RAW_dat_mat = np.vstack(RAW_dat).T
-    length, numbers = RAW_dat_mat.shape 
+    length, numbers = RAW_dat_mat.shape
     assert numbers == 3
 
     with open(filepath, 'w') as f:
         if extra_info is not None:
             f.write('# ' + str(extra_info) + '\n')
+        f.write('#' + '{0:>7} {1:>7} {2:>7}'.format('q', 'I', 'E') + '\n')
         for i in range(length):
             seq = RAW_dat_mat[i]
             content = '{0:.6e} {1:.6e} {2:.6e} \n'.format(seq[0], seq[1], seq[2])
@@ -123,7 +124,7 @@ def scale_curve(curve, ref_curve, qmin, qmax):
     qmin_idx = np.argmin(np.abs(ref_q - qmin))
     qmax_idx = np.argmin(np.abs(ref_q - qmax))
     scaling_factor =  ref_I[qmin_idx:qmax_idx].mean() / curve_I[qmin_idx:qmax_idx].mean()
-    print("scaling_factor is ", str(scaling_factor)[0:6])
+    # print("scaling_factor is ", str(scaling_factor)[0:6])
     scaling_I = scaling_factor * curve_I
     return scaling_I
 
@@ -190,7 +191,7 @@ def subtract_curves(RAW_dats_list, buffer_dat, directory, prefix='data',
         if scale:
             scaling_I = scale_curve((qs, Is), (ref_q, ref_I), qmin=qmin, qmax=qmax)
         else:
-            print("Do not scale, scaling_factor is ", str(1))
+            # print("Do not scale, scaling_factor is ", str(1))
             scaling_I = Is * 1.0
         subtract_I = scaling_I - buffer_I
         extra_info = filename.split('/')[-1]
