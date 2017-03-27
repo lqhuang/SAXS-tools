@@ -143,7 +143,7 @@ def crop_curve(curve, qmin=0.0, qmax=-1.0):
         qmax_idx = np.argmax(curve_q)
     else:
         qmax_idx = np.argmin(np.abs(curve_q - qmax))
-    
+
     curve_q = np.asarray(curve[0][qmin_idx:qmax_idx+1])
     curve_I = np.asarray(curve[1][qmin_idx:qmax_idx+1])
     curve_E = np.asarray(curve[2][qmin_idx:qmax_idx+1])
@@ -154,13 +154,13 @@ def averge_curves(curves_dat_list):
     pass
     if not os.path.exists(directory):
         os.mkdir(directory)
-    
+
     qs_list = list()
     Is_list = list()
     Es_list = list()
     for fname in dats_list:
         pass
-    
+
     return average_dat_list
 
 def subtract_curves(RAW_dats_list, buffer_dat, directory, prefix='data',
@@ -169,7 +169,7 @@ def subtract_curves(RAW_dats_list, buffer_dat, directory, prefix='data',
     """all dats should be original format from software RAW"""
     if not os.path.exists(directory):    
         os.mkdir(directory)
-    
+
     buffer_q, buffer_I, buffer_E = load_RAW_dat(buffer_dat)
     if crop:
         buffer_q, buffer_I, buffer_E = crop_curve((buffer_q, buffer_I, buffer_E),
@@ -181,7 +181,7 @@ def subtract_curves(RAW_dats_list, buffer_dat, directory, prefix='data',
                                              qmin=crop_qmin, qmax=crop_qmax)
     else:
         print('ref data not load')
-    
+
     subtract_dat_list = list()
     for i, filename in enumerate(RAW_dats_list, 1):
         file_path = os.path.join(directory, 'S_' + str(prefix) + '_' + str(i).zfill(5) + '.dat')
