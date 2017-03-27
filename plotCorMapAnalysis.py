@@ -66,7 +66,7 @@ def plot_CorMapAnalysis(root_directory, scale=False, crop=False, subtract=True, 
                          directory=figures_directory)
     scat_obj.plot_heatmap(display=display, save=save_figures, filename=EXP_prefix+'_heatmap.'+fig_format,
                           directory=figures_directory)
-    
+
     close('all')
     # num_frames = len(subtract_dat_list)
     # cormap_step = 10
