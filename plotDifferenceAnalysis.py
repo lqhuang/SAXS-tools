@@ -4,23 +4,33 @@ from saxsio import dat
 from DifferenceAnalysis import DifferenceAnalysis
 from matplotlib.pyplot import close
 
-def plot_DifferenceAnalysis(root_directory, display=False, dash_line_index=(None,),
-                            save_figures=True, fig_format='png', figures_directory=None):
+def plot_DifferenceAnalysis(root_directory, from_average=False,
+                            smooth=False, crop=False, scale=False,
+                            display=False,
+                            dash_line_index=(None,),
+                            save_figures=True, fig_format='png', legend_loc='left',
+                            figures_directory=None):
 
     file_location = os.path.join(root_directory, 'Simple_Results')
-    scat_obj = DifferenceAnalysis.from_subtracted_dats(os.path.join(file_location, '*'))
+    if from_average:
+        scat_obj = DifferenceAnalysis.from_average_dats(os.path.join(file_location, '*'),
+                                                        smooth=smooth, crop=crop, scale=scale,
+                                                        ref_dat=None, qmin=0.13, qmax=0.18)
+    else:
+        scat_obj = DifferenceAnalysis.from_subtracted_dats(os.path.join(file_location, '*'),
+                                                           smooth=smooth, crop=crop)
 
     if not figures_directory:
         figures_directory = os.path.join(root_directory, 'Figures')
     EXP_prefix = os.path.basename(root_directory)
-    scat_obj.plot_relative_diff(display=display, dash_line_index=dash_line_index,
-                                save=save_figures, filename=EXP_prefix+'_relative_ratio.'+fig_format,
-                                directory=figures_directory)
-    scat_obj.plot_profiles(log_intensity=True, display=False, dash_line_index=dash_line_index,
-                           save=save_figures, filename=EXP_prefix+'_saxs_profiles.'+fig_format,
-                           directory=figures_directory)
-
+    kwargs = {'dash_line_index':dash_line_index,
+              'display':display, 'save':save_figures, 'directory':figures_directory}
+    scat_obj.plot_relative_diff(filename=EXP_prefix+'_relative_ratio.'+fig_format, legend_loc=legend_loc,
+                                **kwargs)
+    scat_obj.plot_profiles(log_intensity=True, filename=EXP_prefix+'_saxs_profiles.'+fig_format, legend_loc=legend_loc,
+                           **kwargs)
     close('all')
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()

@@ -6,18 +6,51 @@ from matplotlib import pyplot as plt
 from saxsio import dat
 
 
-def get_data_dict(dat_file):
+def get_data_dict(dat_file, smooth=False, crop=False): # , qmin=0.0, qmax=-1.0):
     data_dict = dict()
     filename = dat_file.split(os.path.sep)[-1]
     data_dict['filename'] = filename
-    data_dict['label'] = filename.replace('.dat', '').replace('_', ' ')
+    if 'A_' in filename[0:2]:
+        start = 0
+    elif 'S_A_' in filename[0:4]:
+        start = 2
+    else:
+        start = -2
+    data_dict['label'] = filename[start+2:].replace('.dat', '').replace('_', ' ')
     q, intensity, error = dat.load_RAW_dat(dat_file)
-    q, intensity, error = dat.crop_curve((q, intensity, error), qmax=0.10)
+    if crop:
+        q, intensity, error = dat.crop_curve((q, intensity, error),
+                                             qmin=0, qmax=0.08)
     data_dict['q'] = q
-    data_dict['I'] = intensity
+    if smooth:
+        data_dict['I'] = dat.smooth_curve(intensity)
+    else:
+        data_dict['I'] = intensity
     data_dict['E'] = error
-    # data_dict['linestyle'] = '-'
     return data_dict
+
+def subtract_data_dict(data_dict_list, buffer_dict, smooth=False, crop=False,
+                       scale=False, ref_dat=None, qmin=0.0, qmax=-1.0):
+    assert len(data_dict_list[0]['q']) == len(buffer_dict['q'])
+    if ref_dat:
+        ref_q, ref_I, _ = dat.load_RAW_dat(ref_dat)
+        assert len(ref_q) == len(buffer_dict['q'])
+    else:
+        ref_q = data_dict_list[0]['q']
+        ref_I = data_dict_list[0]['I']
+    for data_dict in data_dict_list:
+        data_dict['filename'] = 'S_' + data_dict['filename']
+        data_dict['buffer'] = buffer_dict['filename']
+        if scale:
+            data_dict['I'] = dat.scale_curve((data_dict['q'], data_dict['I']),
+                                             (ref_q, ref_I), qmin=qmin, qmax=qmax)
+        data_dict['I'] -= buffer_dict['I']
+        if smooth:
+            data_dict['I'] = dat.smooth_curve(data_dict['I'])
+        if crop:
+            data_dict['q'], data_dict['I'], data_dict['E'] = dat.crop_curve((data_dict['q'], data_dict['I'], data_dict['E']), qmin=0, qmax=0.08)
+
+    return data_dict_list
 
 class DifferenceAnalysis(object):
     # ----------------------------------------------------------------------- #
@@ -50,10 +83,12 @@ class DifferenceAnalysis(object):
     # ----------------------------------------------------------------------- #
     #                         CONSTRUCTOR METHOD                              #
     # ----------------------------------------------------------------------- #
-    def __init__(self, data_dict_list):
+    def __init__(self, data_dict_list, buffer_dict=None):
         self.num_curves = len(data_dict_list)
         self.data_dict_list = data_dict_list
         self.keys = data_dict_list[0].keys()
+        if buffer_dict:
+            self.buffer_dict = buffer_dict
 
     # ----------------------------------------------------------------------- #
     #                          CLASS METHODS                                  #
@@ -71,46 +106,35 @@ class DifferenceAnalysis(object):
         return cls
 
     @classmethod
-    def from_average_dats(self, average_dat_location, buffer_dat=None,
-                          scale=False, ref_dat=None):
+    def from_average_dats(self, average_dat_location, buffer_dat=None, smooth=False, crop=False,
+                          scale=False, ref_dat=None, qmin=0.0, qmax=-1.0):
         # glob files
         file_list = glob.glob(average_dat_location)
-        if '*' in average_dat_location:
-            location_str_list = average_dat_location.split(os.path.sep)[0:-1]
-            temp_directory = os.path.sep.join(location_str_list)
         if len(file_list) == 0:
             raise FileNotFoundError('Do not find dat files')
         average_dat_list = [fname for fname in file_list \
-                            if fname.split(os.path.sep)[-1].lower().startswith('a')]
+                            if fname.split(os.path.sep)[-1].lower().startswith('a') \
+                               and 'buffer' not in fname.split(os.path.sep)[-1].lower()]
+        # read buffer
+        buffer_dict = dict()
         if buffer_dat:
-            buffer_q, buffer_I, buffer_E = dat.load_RAW_dat(buffer_dat)
+            buffer_dict['q'], buffer_dict['I'], buffer_dict['E'] = dat.load_RAW_dat(buffer_dat)
         else:
             buffer_dat = [fname for fname in file_list if 'buffer' in fname.lower()]
             assert len(buffer_dat) == 1
-            buffer_q, buffer_I, buffer_E = dat.load_RAW_dat(buffer_dat[0])
-        # subtract
-        if scale:
-            if not ref_dat:
-                ref_dat = average_dat_list[0]
-            raise NotImplementedError
-        else:
-            temp_file_list = list()
-            for dat_file in average_dat_list:
-                q, intensity, error = dat.load_RAW_dat(dat_file)
-                intensity -= buffer_I
-                subtracted_dat = os.path.join(temp_directory, \
-                                                   'temp_S_' + os.path.basename(dat_file))
-                temp_file_list.append(subtracted_dat)
-                dat.write_dat(subtracted_dat, (q, intensity, error), extra_info=subtracted_dat)
-
-            data_dict_list = [get_data_dict(dat_file) for dat_file in temp_file_list]
-            remove = [os.remove(dat_file) for dat_file in temp_directory]
-        cls = DifferenceAnalysis(data_dict_list)
-
+            buffer_dict = get_data_dict(buffer_dat[0])
+        # subtracting
+        data_dict_list = [get_data_dict(dat_file) for dat_file in average_dat_list]
+            # smoothing must behind subtracting
+        subtracted_data_dict_list = subtract_data_dict(data_dict_list, buffer_dict,
+                                                       smooth=smooth, crop=crop,
+                                                       scale=scale, ref_dat=ref_dat,
+                                                       qmin=qmin, qmax=qmax)
+        cls = DifferenceAnalysis(subtracted_data_dict_list, buffer_dict=buffer_dict)
         return cls
 
     @classmethod
-    def from_subtracted_dats(self, subtracted_dat_location, from_average=True):
+    def from_subtracted_dats(self, subtracted_dat_location, smooth=False, crop=False, from_average=True):
         # glob files
         file_list = glob.glob(subtracted_dat_location)
         if len(file_list) == 0:
@@ -119,12 +143,25 @@ class DifferenceAnalysis(object):
         subtracted_dat_list = [fname for fname in file_list \
                                if fname.split(os.path.sep)[-1].lower().startswith('s')]
         if len(subtracted_dat_list) != 0:
-            data_dict_list = [get_data_dict(dat_file) for dat_file in subtracted_dat_list]
+            data_dict_list = [get_data_dict(dat_file, smooth=smooth, crop=crop) \
+                              for dat_file in subtracted_dat_list]
             cls = DifferenceAnalysis(data_dict_list)
         elif from_average and len(subtracted_dat_list) == 0:
-            cls = DifferenceAnalysis.from_average_dats(subtracted_dat_location, buffer_dat=None)
+            cls = DifferenceAnalysis.from_average_dats(subtracted_dat_location, smooth=smooth, crop=crop)
         elif not from_average and len(subtracted_dat_list) == 0:
             raise ValueError('Do not exist subtracted dat files')
+        return cls
+
+    @classmethod
+    def from_dats_list(self, dats_list, from_average=False):
+        # glob files
+        file_list = dats_list
+        if len(file_list) == 0:
+            raise FileNotFoundError('Do not find dat files')
+        # read data
+        data_dict_list = [get_data_dict(dat_file) for dat_file in file_list]
+        cls = DifferenceAnalysis(data_dict_list)
+
         return cls
 
     # ----------------------------------------------------------------------- #
@@ -135,7 +172,7 @@ class DifferenceAnalysis(object):
             data_dict['log_I'] = np.log(data_dict['I'])
         self.keys = self.data_dict_list[0].keys()
 
-    def calc_relative_diff(self, baseline_dat=None, crop=False):
+    def calc_relative_diff(self, baseline_dat=None):
         if not baseline_dat:
             baseline_dict = self.data_dict_list[0]
         else:
@@ -145,7 +182,7 @@ class DifferenceAnalysis(object):
             data_dict['relative_diff'] *= 100
         self.keys = self.data_dict_list[0].keys()
 
-    def calc_absolute_diff(self, baseline_dat=None, crop=False):
+    def calc_absolute_diff(self, baseline_dat=None):
         if not baseline_dat:
             baseline_dict = self.data_dict_list[0]
         else:
@@ -155,8 +192,10 @@ class DifferenceAnalysis(object):
         self.keys = self.data_dict_list[0].keys()
 
     # ----------------------- PLOT ------------------------#
-    def plot_profiles(self, log_intensity=True, dash_line_index=(None,),
-                      display=True, save=False, filename=None, directory=None):
+    def plot_profiles(self, log_intensity=True,
+                      dash_line_index=(None,),
+                      display=True, save=False, filename=None, legend_loc='left',
+                      directory=None):
         ###########   SAXS Profiles  ####################
         self.PLOT_NUM += 1
 
@@ -176,17 +215,30 @@ class DifferenceAnalysis(object):
             plt.plot(data_dict['q'], data_dict[intensity_key],
                      label=data_dict['label'],
                      linestyle=linestyle, linewidth=1)
-        plt.xlabel(r'Scattering Vector, q ($nm^{-1}$)', fontdict=self.PLOT_LABEL)
+        ylim = ax.get_ylim()
+        if ylim[0] >= 10.0:
+            lower_lim = -5.0
+        else:
+            lower_lim = ylim[0]
+        if ylim[1] <= 2.0:
+            upper_lim = 5.0
+        else:
+            upper_lim = ylim[1]
+        plt.ylim([lower_lim, upper_lim])
+        plt.xlabel(r'Scattering Vector, q ($\AA^{-1}$)', fontdict=self.PLOT_LABEL)
         if log_intensity:
             plt.ylabel(r'log(I) (arb. units.)', fontdict=self.PLOT_LABEL)
         else:
             plt.ylabel(r'Intensity (arb. units.)', fontdict=self.PLOT_LABEL)
         box = ax.get_position()
         ax.set_position([box.x0, box.y0, box.width * 1.1, box.height])
-        lgd = ax.legend(loc='center left', bbox_to_anchor=(1, 0.5),
-                        frameon=False, prop={'size':self.LABEL_SIZE})
+        if 'left' in legend_loc:
+            lgd = ax.legend(loc='center left', bbox_to_anchor=(1, 0.5),
+                            frameon=False, prop={'size':self.LABEL_SIZE})
+        elif 'down' in legend_loc:
+            lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15),
+                            frameon=False, prop={'size':self.LABEL_SIZE})
         plt.title(r'SAXS Subtracted Profiles')
-        # plt.tight_layout()
 
         # +++++++++++++++++++++ SAVE AND/OR DISPLAY +++++++++++++++++++++ #
         if filename:
@@ -202,10 +254,14 @@ class DifferenceAnalysis(object):
                 fig_path = filename
             plt.savefig(fig_path, dpi=600, bbox_extra_artists=(lgd,), bbox_inches='tight')
         if display:
+            ax.legend().draggable()
+            # plt.tight_layout()
             plt.show(fig)
 
-    def plot_relative_diff(self, baseline_dat=None, dash_line_index=(None,),
-                           display=True, save=False, filename=None, directory=None):
+    def plot_relative_diff(self, baseline_dat=None,
+                           dash_line_index=(None,),
+                           display=True, save=False, filename=None, legend_loc='left',
+                           directory=None):
         ###########   Relative Ratio  ####################
         self.PLOT_NUM += 1
 
@@ -223,16 +279,26 @@ class DifferenceAnalysis(object):
             plt.plot(data_dict['q'], data_dict['relative_diff'],
                      label=data_dict['label'],
                      linestyle=linestyle, linewidth=1)
-        plt.xlabel(r'Scattering Vector, q ($nm^{-1}$)', fontdict=self.PLOT_LABEL)
+        ylim = ax.get_ylim()
+        if ylim[0] >= -2.0:
+            lower_lim = -5.0
+        else:
+            lower_lim = ylim[0]
+        if ylim[1] <= 2.0:
+            upper_lim = 5.0
+        else:
+            upper_lim = ylim[1]
+        plt.ylim([lower_lim, upper_lim])
+        plt.xlabel(r'Scattering Vector, q ($\AA^{-1}$)', fontdict=self.PLOT_LABEL)
         plt.ylabel(r'Relative Ratio (%)', fontdict=self.PLOT_LABEL)
         box = ax.get_position()
         ax.set_position([box.x0, box.y0, box.width * 1.1, box.height])
-        lgd = ax.legend(loc='center left', bbox_to_anchor=(1, 0.5),
-                        frameon=False, prop={'size':self.LABEL_SIZE})
-        # lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15),
-        #                 frameon=False, prop={'size':self.LABEL_SIZE})
-        if display:
-            ax.legend().draggable()
+        if 'left' in legend_loc:
+            lgd = ax.legend(loc='center left', bbox_to_anchor=(1, 0.5),
+                            frameon=False, prop={'size':self.LABEL_SIZE})
+        elif 'down' in legend_loc:
+            lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15),
+                            frameon=False, prop={'size':self.LABEL_SIZE})
         plt.title(r'Relative Difference Ratio Analysis')
 
         # +++++++++++++++++++++ SAVE AND/OR DISPLAY +++++++++++++++++++++ #
@@ -249,4 +315,6 @@ class DifferenceAnalysis(object):
                 fig_path = filename
             plt.savefig(fig_path, dpi=600, bbox_extra_artists=(lgd,), bbox_inches='tight')
         if display:
+            ax.legend().draggable()
+            # plt.tight_layout()
             plt.show(fig)
