@@ -2,6 +2,7 @@ import os
 import numpy as np 
 import matplotlib.pyplot as plt
 from scipy.stats import linregress
+from scipy.signal import savgol_filter
 
 
 def load_iq_dat(filepath):
@@ -107,7 +108,12 @@ def write_dat(filepath, RAW_dat, extra_info=None):
             content = '{0:.6e} {1:.6e} {2:.6e} \n'.format(seq[0], seq[1], seq[2])
             f.write(content)
 
-def scale_curve(curve, ref_curve, qmin, qmax):
+def smooth_curve(intensity, window_length=25, polyorder=5):
+    smoothing_intensity = savgol_filter(intensity,
+                                        window_length=window_length, polyorder=polyorder)
+    return smoothing_intensity
+
+def scale_curve(curve, ref_curve, qmin=0.0, qmax=-1.0, stat_func=np.sum):
     """
     Scale 1D scatter curve
     input:
@@ -120,10 +126,12 @@ def scale_curve(curve, ref_curve, qmin, qmax):
     curve_q, curve_I = curve[0], curve[1]
     ref_q, ref_I = ref_curve[0], ref_curve[1]
     assert len(curve_q) == len(ref_q)
-
     qmin_idx = np.argmin(np.abs(ref_q - qmin))
-    qmax_idx = np.argmin(np.abs(ref_q - qmax))
-    scaling_factor =  ref_I[qmin_idx:qmax_idx].mean() / curve_I[qmin_idx:qmax_idx].mean()
+    if qmax < 0:
+        qmax_idx = len(curve_q)
+    else:
+        qmax_idx = np.argmin(np.abs(ref_q - qmax))
+    scaling_factor =  stat_func(ref_I[qmin_idx:qmax_idx]) / stat_func(curve_I[qmin_idx:qmax_idx])
     # print("scaling_factor is ", str(scaling_factor)[0:6])
     scaling_I = scaling_factor * curve_I
     return scaling_I
