@@ -6,7 +6,8 @@ from matplotlib import pyplot as plt
 from saxsio import dat
 
 
-def get_data_dict(dat_file, smooth=False, crop=False): # , qmin=0.0, qmax=-1.0):
+def get_data_dict(dat_file, smooth=False, crop=False,
+                  crop_qmin=0.0, crop_qmax=-1.0):
     data_dict = dict()
     filename = dat_file.split(os.path.sep)[-1]
     data_dict['filename'] = filename
@@ -20,7 +21,7 @@ def get_data_dict(dat_file, smooth=False, crop=False): # , qmin=0.0, qmax=-1.0):
     q, intensity, error = dat.load_RAW_dat(dat_file)
     if crop:
         q, intensity, error = dat.crop_curve((q, intensity, error),
-                                             qmin=0, qmax=0.08)
+                                             qmin=crop_qmin, qmax=crop_qmax)
     data_dict['q'] = q
     if smooth:
         data_dict['I'] = dat.smooth_curve(intensity)
@@ -29,8 +30,9 @@ def get_data_dict(dat_file, smooth=False, crop=False): # , qmin=0.0, qmax=-1.0):
     data_dict['E'] = error
     return data_dict
 
-def subtract_data_dict(data_dict_list, buffer_dict, smooth=False, crop=False,
-                       scale=False, ref_dat=None, qmin=0.0, qmax=-1.0):
+def subtract_data_dict(data_dict_list, buffer_dict, smooth=False,
+                       crop=False, crop_qmin=0.0, crop_qmax=-1.0,
+                       scale=False, ref_dat=None, scale_qmin=0.0, scale_qmax=-1.0):
     assert len(data_dict_list[0]['q']) == len(buffer_dict['q'])
     if ref_dat:
         ref_q, ref_I, _ = dat.load_RAW_dat(ref_dat)
@@ -83,12 +85,16 @@ class DifferenceAnalysis(object):
     # ----------------------------------------------------------------------- #
     #                         CONSTRUCTOR METHOD                              #
     # ----------------------------------------------------------------------- #
-    def __init__(self, data_dict_list, buffer_dict=None):
+    def __init__(self, data_dict_list, buffer_dict=None,
+                 crop=False, crop_qmin=0.0, crop_qmax=-1.0):
         self.num_curves = len(data_dict_list)
         self.data_dict_list = data_dict_list
         self.keys = data_dict_list[0].keys()
         if buffer_dict:
             self.buffer_dict = buffer_dict
+        self.crop = crop
+        self.crop_qmin = crop_qmin
+        self.crop_qmax = crop_qmax
 
     # ----------------------------------------------------------------------- #
     #                          CLASS METHODS                                  #
@@ -106,8 +112,10 @@ class DifferenceAnalysis(object):
         return cls
 
     @classmethod
-    def from_average_dats(self, average_dat_location, buffer_dat=None, smooth=False, crop=False,
-                          scale=False, ref_dat=None, qmin=0.0, qmax=-1.0):
+    def from_average_dats(self, average_dat_location, buffer_dat=None,
+                          smooth=False,
+                          crop=False, crop_qmin=0, crop_qmax=-1.0,
+                          scale=False, ref_dat=None, scale_qmin=0.0, scale_qmax=-1.0):
         # glob files
         file_list = glob.glob(average_dat_location)
         if len(file_list) == 0:
@@ -121,20 +129,27 @@ class DifferenceAnalysis(object):
             buffer_dict['q'], buffer_dict['I'], buffer_dict['E'] = dat.load_RAW_dat(buffer_dat)
         else:
             buffer_dat = [fname for fname in file_list if 'buffer' in fname.lower()]
-            assert len(buffer_dat) == 1
-            buffer_dict = get_data_dict(buffer_dat[0])
+            # assert len(buffer_dat) == 1
+            print('Use buffer file: ', buffer_dat[0])
+            buffer_dict = get_data_dict(buffer_dat[0], crop=crop,
+                                        crop_qmin=crop_qmin, crop_qmax=crop_qmax)
         # subtracting
-        data_dict_list = [get_data_dict(dat_file) for dat_file in average_dat_list]
-            # smoothing must behind subtracting
+        data_dict_list = [get_data_dict(dat_file, crop=crop,
+                                        crop_qmin=crop_qmin, crop_qmax=crop_qmax) \
+                          for dat_file in average_dat_list]
+        # smoothing must behind subtracting
         subtracted_data_dict_list = subtract_data_dict(data_dict_list, buffer_dict,
-                                                       smooth=smooth, crop=crop,
+                                                       smooth=smooth,
                                                        scale=scale, ref_dat=ref_dat,
-                                                       qmin=qmin, qmax=qmax)
+                                                       scale_qmin=scale_qmin, scale_qmax=scale_qmax,
+                                                       crop=crop)
         cls = DifferenceAnalysis(subtracted_data_dict_list, buffer_dict=buffer_dict)
         return cls
 
     @classmethod
-    def from_subtracted_dats(self, subtracted_dat_location, smooth=False, crop=False, from_average=True):
+    def from_subtracted_dats(self, subtracted_dat_location, smooth=False,
+                             crop=False, crop_qmin=0.0, crop_qmax=-1.0,
+                             from_average=True):
         # glob files
         file_list = glob.glob(subtracted_dat_location)
         if len(file_list) == 0:
@@ -143,11 +158,14 @@ class DifferenceAnalysis(object):
         subtracted_dat_list = [fname for fname in file_list \
                                if fname.split(os.path.sep)[-1].lower().startswith('s')]
         if len(subtracted_dat_list) != 0:
-            data_dict_list = [get_data_dict(dat_file, smooth=smooth, crop=crop) \
+            data_dict_list = [get_data_dict(dat_file, smooth=smooth, crop=crop,
+                                            crop_qmin=crop_qmin, crop_qmax=crop_qmax) \
                               for dat_file in subtracted_dat_list]
             cls = DifferenceAnalysis(data_dict_list)
         elif from_average and len(subtracted_dat_list) == 0:
-            cls = DifferenceAnalysis.from_average_dats(subtracted_dat_location, smooth=smooth, crop=crop)
+            cls = DifferenceAnalysis.from_average_dats(subtracted_dat_location, smooth=smooth,
+                                                       crop=crop, crop_qmin=crop_qmin, crop_qmax=crop_qmax)
+            print('Warning: Do not find any subtracted curves, read data from average curves')
         elif not from_average and len(subtracted_dat_list) == 0:
             raise ValueError('Do not exist subtracted dat files')
         return cls
@@ -159,6 +177,7 @@ class DifferenceAnalysis(object):
         if len(file_list) == 0:
             raise FileNotFoundError('Do not find dat files')
         # read data
+        # Notice that here is no option !
         data_dict_list = [get_data_dict(dat_file) for dat_file in file_list]
         cls = DifferenceAnalysis(data_dict_list)
 
@@ -176,7 +195,8 @@ class DifferenceAnalysis(object):
         if not baseline_dat:
             baseline_dict = self.data_dict_list[0]
         else:
-            baseline_dict = get_data_dict(baseline_dat)
+            baseline_dict = get_data_dict(baseline_dat, crop=self.crop,
+                                          crop_qmin=self.crop_qmin, crop_qmax=self.crop_qmax)
         for data_dict in self.data_dict_list:
             data_dict['relative_diff'] = (data_dict['I'] - baseline_dict['I']) / baseline_dict['I']
             data_dict['relative_diff'] *= 100
@@ -186,7 +206,8 @@ class DifferenceAnalysis(object):
         if not baseline_dat:
             baseline_dict = self.data_dict_list[0]
         else:
-            baseline_dict = get_data_dict(baseline_dat)
+            baseline_dict = get_data_dict(baseline_dat, crop=self.crop,
+                                          crop_qmin=self.crop_qmin, crop_qmax=self.crop_qmax)
         for data_dict in self.data_dict_list:
             data_dict['absolute_diff'] = data_dict['I'] - baseline_dict['I']
         self.keys = self.data_dict_list[0].keys()

@@ -172,7 +172,8 @@ def averge_curves(curves_dat_list):
     return average_dat_list
 
 def subtract_curves(RAW_dats_list, buffer_dat, directory, prefix='data',
-                    scale=False, ref_dat=None, qmin=0.20, qmax=0.25,
+                    scale=False, ref_dat=None,
+                    scale_qmin=0.0, scale_qmax=-1.0,
                     crop=False, crop_qmin=0.0, crop_qmax=-1):
     """all dats should be original format from software RAW"""
     if not os.path.exists(directory):    
@@ -197,7 +198,7 @@ def subtract_curves(RAW_dats_list, buffer_dat, directory, prefix='data',
         if crop:
             qs, Is, Es = crop_curve((qs, Is, Es), qmin=crop_qmin, qmax=crop_qmax)
         if scale:
-            scaling_I = scale_curve((qs, Is), (ref_q, ref_I), qmin=qmin, qmax=qmax)
+            scaling_I = scale_curve((qs, Is), (ref_q, ref_I), qmin=scale_qmin, qmax=scale_qmax)
         else:
             # print("Do not scale, scaling_factor is ", str(1))
             scaling_I = Is * 1.0

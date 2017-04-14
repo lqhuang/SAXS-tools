@@ -9,9 +9,12 @@ from saxsio import dat
 from utils import find_common_string_from_list
 
 
-def plot_CorMapAnalysis(root_directory, scale=False, crop=False, subtract=True, skip=0,
-                        buffer_dat=None, ref_dat=None, display=False,
-                        save_figures=True, fig_format='png', figures_directory=None):
+def plot_CorMapAnalysis(root_directory, skip=0,
+                        subtract=True, buffer_dat=None,
+                        scale=False, ref_dat=None, scale_qmin=0.0, scale_qmax=-1.0,
+                        crop=False, crop_qmin=0.0, crop_qmax=-1.0,
+                        display=False, save_figures=True,
+                        fig_format='png', figures_directory=None):
     # check Frames directory
     exists_frames_directory = os.path.exists(os.path.join(root_directory, 'Frames'))
     exists_valid_frames_directory = os.path.exists(os.path.join(root_directory, 'Valid_Frames'))
@@ -54,17 +57,20 @@ def plot_CorMapAnalysis(root_directory, scale=False, crop=False, subtract=True, 
     print(r'buffer dat file:', buffer_dat.split(os.path.sep)[-1])
     subtract_directory = os.path.join(root_directory, 'Subtract')
     subtract_dat_list = dat.subtract_curves(data_dat_list, buffer_dat, subtract_directory, prefix='data',
-                                            scale=scale, ref_dat=ref_dat, qmin=0.10, qmax=0.15,
-                                            crop=crop, crop_qmin=0.0, crop_qmax=0.10)
+                                            scale=scale, ref_dat=ref_dat,
+                                            scale_qmin=scale_qmin, scale_qmax=scale_qmax,
+                                            crop=crop, crop_qmin=crop_qmin, crop_qmax=crop_qmax)
     # plot CorMap
     subtract_dat_location = find_common_string_from_list(subtract_dat_list)
     scat_obj = ScatterAnalysis.from_1d_curves(subtract_dat_location + '*')
     if not figures_directory:
         figures_directory = os.path.join(root_directory, 'Figures')
     EXP_prefix = os.path.basename(root_directory)
-    scat_obj.plot_cormap(display=display, save=save_figures, filename=EXP_prefix+'_cormap.'+fig_format,
+    scat_obj.plot_cormap(display=display, save=save_figures,
+                         filename=EXP_prefix+'_cormap.'+fig_format,
                          directory=figures_directory)
-    scat_obj.plot_heatmap(display=display, save=save_figures, filename=EXP_prefix+'_heatmap.'+fig_format,
+    scat_obj.plot_heatmap(display=display, save=save_figures,
+                          filename=EXP_prefix+'_heatmap.'+fig_format,
                           directory=figures_directory)
 
     close('all')
@@ -84,14 +90,32 @@ if __name__ == '__main__':
     parser.add_argument('-f', '--figures_directory',
                         help='Figures directory in root directory for CorMap Analysis (default=Figures)',
                         default='Figures')
+    
     parser.add_argument('--skip', help='Frames need to be skipped (default=1)', type=int, default=1)
-    parser.add_argument('--scale', help='Whether to scale curves (default=False)',  type=bool, default=False)
-    parser.add_argument('--crop', help='Whether to crop curves (default=False)',  type=bool, default=False)
+    
+    parser.add_argument('--crop', help='Whether to crop curves (default=False)', type=bool, default=False)
+    parser.add_argument('--crop_qmin', help='min q for cropping',  type=float, default=0.0)
+    parser.add_argument('--crop_qmax', help='max q for cropping',  type=float, default=15.0)
+
+    parser.add_argument('--scale', help='Whether to scale curves (default=False)', type=bool, default=False)
+    parser.add_argument('--scale_qmin', help='min q for scaling',  type=float, default=0.0)
+    parser.add_argument('--scale_qmax', help='max q for scaling',  type=float, default=-1.0)
+    
     args = parser.parse_args()
+    print(args)
     root_directory = args.root_directory
-    skip = args.skip
-    scale = args.scale
-    crop = args.crop
     figures_directory = os.path.join(root_directory, args.figures_directory)
-    plot_CorMapAnalysis(root_directory, scale=scale, crop=crop, subtract=True, skip=skip,
+    skip = args.skip
+
+    scale = args.scale
+    scale_qmin = args.scale_qmin
+    scale_qmin = args.scale_qmin
+
+    crop = args.crop
+    crop_qmin = args.crop_qmin
+    crop_qmax = args.crop_qmax
+        
+    plot_CorMapAnalysis(root_directory, subtract=True, skip=skip,
+                        scale=scale, scale_qmin=scale_qmin, scale_qmax=scale_qmax,
+                        crop=crop, crop_qmin=crop_qmin, crop_qmin=crop_qmax,
                         save_figures=True, figures_directory=figures_directory)
