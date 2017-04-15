@@ -1,12 +1,11 @@
 import os
 import re
 import glob
-import difflib
 import argparse
 from matplotlib.pyplot import close
 from CorMapAnalysis import ScatterAnalysis
 from saxsio import dat
-from utils import find_common_string_from_list
+from utils import find_common_string_from_list, print_arguments
 
 
 def plot_CorMapAnalysis(root_directory, skip=0,
@@ -18,15 +17,10 @@ def plot_CorMapAnalysis(root_directory, skip=0,
     # check Frames directory
     exists_frames_directory = os.path.exists(os.path.join(root_directory, 'Frames'))
     exists_valid_frames_directory = os.path.exists(os.path.join(root_directory, 'Valid_Frames'))
-    if exists_frames_directory and exists_valid_frames_directory:
+    if exists_frames_directory:
         file_location = os.path.join(root_directory, 'Frames')
-        skip = 0
-    elif exists_frames_directory and not exists_valid_frames_directory:
-        file_location = os.path.join(root_directory, 'Frames')
-        skip = 0
     elif not exists_frames_directory and exists_valid_frames_directory:
         file_location = os.path.join(root_directory, 'Valid_Frames')
-        skip = 0
     else:
         raise ValueError('Do not exist frames directory')
     # glob files
@@ -84,25 +78,25 @@ def plot_CorMapAnalysis(root_directory, skip=0,
     # close('all')
 
 if __name__ == '__main__':
-    # working_directory = r'E:\2017\201703\20170310'
+    # create an argument parser
     parser = argparse.ArgumentParser()
     parser.add_argument('-r', '--root_directory', help='Root directory for EXPERIMENTS data')
     parser.add_argument('-f', '--figures_directory',
                         help='Figures directory in root directory for CorMap Analysis (default=Figures)',
-                        default='Figures')
-    
+                        type=str, default='Figures')
     parser.add_argument('--skip', help='Frames need to be skipped (default=1)', type=int, default=0)
-    
     parser.add_argument('--crop', help='Whether to crop curves (default=False)', type=bool, default=False)
     parser.add_argument('--crop_qmin', help='min q for cropping',  type=float, default=0.0)
     parser.add_argument('--crop_qmax', help='max q for cropping',  type=float, default=-1.0)
-
     parser.add_argument('--scale', help='Whether to scale curves (default=False)', type=bool, default=False)
     parser.add_argument('--scale_qmin', help='min q for scaling',  type=float, default=0.0)
     parser.add_argument('--scale_qmax', help='max q for scaling',  type=float, default=-1.0)
-    
+
+    # parse arguments
     args = parser.parse_args()
-    print(args)
+    args_dict = args.__dict__
+    print_arguments(args_dict)
+
     root_directory = args.root_directory
     figures_directory = os.path.join(root_directory, args.figures_directory)
     skip = args.skip
@@ -114,7 +108,8 @@ if __name__ == '__main__':
     crop = args.crop
     crop_qmin = args.crop_qmin
     crop_qmax = args.crop_qmax
-        
+
+    # run
     plot_CorMapAnalysis(root_directory, subtract=True, skip=skip,
                         scale=scale, scale_qmin=scale_qmin, scale_qmax=scale_qmax,
                         crop=crop, crop_qmin=crop_qmin, crop_qmax=crop_qmax,
