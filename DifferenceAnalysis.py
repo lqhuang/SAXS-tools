@@ -190,9 +190,9 @@ class DifferenceAnalysis(object):
             data_dict['log_I'] = np.log(data_dict['I'])
         self.keys = self.data_dict_list[0].keys()
 
-    def calc_relative_diff(self, baseline_dat=None):
+    def calc_relative_diff(self, baseline_index=1, baseline_dat=None):
         if not baseline_dat:
-            baseline_dict = self.data_dict_list[0]
+            baseline_dict = self.data_dict_list[baseline_index-1]
         else:
             baseline_dict = get_data_dict(baseline_dat, crop=self.crop,
                                           crop_qmin=self.crop_qmin, crop_qmax=self.crop_qmax)
@@ -278,7 +278,7 @@ class DifferenceAnalysis(object):
             # plt.tight_layout()
             plt.show(fig)
 
-    def plot_relative_diff(self, baseline_dat=None,
+    def plot_relative_diff(self, baseline_index=0, baseline_dat=None,
                            dash_line_index=(None,),
                            display=True, save=False, filename=None, legend_loc='left',
                            directory=None):
@@ -286,7 +286,7 @@ class DifferenceAnalysis(object):
         self.PLOT_NUM += 1
 
         # ++++++++++++ CALCULATE RELATIVE DIFFERENCE RATIO ++++++++++++++ #
-        self.calc_relative_diff(baseline_dat=baseline_dat)
+        self.calc_relative_diff(baseline_index=baseline_index, baseline_dat=baseline_dat)
 
         # ++++++++++++++++++++++++++++++ PLOT +++++++++++++++++++++++++++ #
         fig = plt.figure(self.PLOT_NUM)
