@@ -20,10 +20,10 @@ def plot_CorMapAnalysis(root_directory, skip=0,
     exists_valid_frames_directory = os.path.exists(os.path.join(root_directory, 'Valid_Frames'))
     if exists_frames_directory and exists_valid_frames_directory:
         file_location = os.path.join(root_directory, 'Frames')
-        skip = 1
+        skip = 0
     elif exists_frames_directory and not exists_valid_frames_directory:
         file_location = os.path.join(root_directory, 'Frames')
-        skip = 1
+        skip = 0
     elif not exists_frames_directory and exists_valid_frames_directory:
         file_location = os.path.join(root_directory, 'Valid_Frames')
         skip = 0
@@ -91,11 +91,11 @@ if __name__ == '__main__':
                         help='Figures directory in root directory for CorMap Analysis (default=Figures)',
                         default='Figures')
     
-    parser.add_argument('--skip', help='Frames need to be skipped (default=1)', type=int, default=1)
+    parser.add_argument('--skip', help='Frames need to be skipped (default=1)', type=int, default=0)
     
     parser.add_argument('--crop', help='Whether to crop curves (default=False)', type=bool, default=False)
     parser.add_argument('--crop_qmin', help='min q for cropping',  type=float, default=0.0)
-    parser.add_argument('--crop_qmax', help='max q for cropping',  type=float, default=15.0)
+    parser.add_argument('--crop_qmax', help='max q for cropping',  type=float, default=-1.0)
 
     parser.add_argument('--scale', help='Whether to scale curves (default=False)', type=bool, default=False)
     parser.add_argument('--scale_qmin', help='min q for scaling',  type=float, default=0.0)
@@ -109,7 +109,7 @@ if __name__ == '__main__':
 
     scale = args.scale
     scale_qmin = args.scale_qmin
-    scale_qmin = args.scale_qmin
+    scale_qmax = args.scale_qmax
 
     crop = args.crop
     crop_qmin = args.crop_qmin
@@ -117,5 +117,5 @@ if __name__ == '__main__':
         
     plot_CorMapAnalysis(root_directory, subtract=True, skip=skip,
                         scale=scale, scale_qmin=scale_qmin, scale_qmax=scale_qmax,
-                        crop=crop, crop_qmin=crop_qmin, crop_qmin=crop_qmax,
+                        crop=crop, crop_qmin=crop_qmin, crop_qmax=crop_qmax,
                         save_figures=True, figures_directory=figures_directory)

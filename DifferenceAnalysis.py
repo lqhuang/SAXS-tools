@@ -45,14 +45,16 @@ def subtract_data_dict(data_dict_list, buffer_dict, smooth=False,
         data_dict['buffer'] = buffer_dict['filename']
         if scale:
             data_dict['I'] = dat.scale_curve((data_dict['q'], data_dict['I']),
-                                             (ref_q, ref_I), qmin=qmin, qmax=qmax)
+                                             (ref_q, ref_I), qmin=scale_qmin, qmax=scale_qmax)
         data_dict['I'] -= buffer_dict['I']
         if smooth:
             data_dict['I'] = dat.smooth_curve(data_dict['I'])
         if crop:
-            data_dict['q'], data_dict['I'], data_dict['E'] = dat.crop_curve((data_dict['q'], data_dict['I'], data_dict['E']), qmin=0, qmax=0.08)
-
+            data_dict['q'], data_dict['I'], data_dict['E'] = \
+                dat.crop_curve((data_dict['q'], data_dict['I'], data_dict['E']),
+                               qmin=crop_qmin, qmax=crop_qmax)
     return data_dict_list
+
 
 class DifferenceAnalysis(object):
     # ----------------------------------------------------------------------- #
@@ -107,15 +109,14 @@ class DifferenceAnalysis(object):
         file_location = os.path.join(root_directory, 'Simple_Results')
         file_list = glob.glob(file_location)
         # read data
-
         cls = None
         return cls
 
     @classmethod
     def from_average_dats(self, average_dat_location, buffer_dat=None,
                           smooth=False,
-                          crop=False, crop_qmin=0, crop_qmax=-1.0,
-                          scale=False, ref_dat=None, scale_qmin=0.0, scale_qmax=-1.0):
+                          scale=False, ref_dat=None, scale_qmin=0.0, scale_qmax=-1.0,
+                          crop=False, crop_qmin=0, crop_qmax=-1.0):
         # glob files
         file_list = glob.glob(average_dat_location)
         if len(file_list) == 0:
@@ -137,12 +138,11 @@ class DifferenceAnalysis(object):
         data_dict_list = [get_data_dict(dat_file, crop=crop,
                                         crop_qmin=crop_qmin, crop_qmax=crop_qmax) \
                           for dat_file in average_dat_list]
-        # smoothing must behind subtracting
-        subtracted_data_dict_list = subtract_data_dict(data_dict_list, buffer_dict,
-                                                       smooth=smooth,
+        # smoothing must behind subtracting, cropping after scaling.
+        subtracted_data_dict_list = subtract_data_dict(data_dict_list, buffer_dict, smooth=smooth,
                                                        scale=scale, ref_dat=ref_dat,
                                                        scale_qmin=scale_qmin, scale_qmax=scale_qmax,
-                                                       crop=crop)
+                                                       crop=crop, crop_qmin=crop_qmin, crop_qmax=crop_qmax)
         cls = DifferenceAnalysis(subtracted_data_dict_list, buffer_dict=buffer_dict)
         return cls
 
@@ -180,7 +180,6 @@ class DifferenceAnalysis(object):
         # Notice that here is no option !
         data_dict_list = [get_data_dict(dat_file) for dat_file in file_list]
         cls = DifferenceAnalysis(data_dict_list)
-
         return cls
 
     # ----------------------------------------------------------------------- #

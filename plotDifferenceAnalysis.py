@@ -9,7 +9,7 @@ def plot_DifferenceAnalysis(root_directory, from_average=False,
                             figures_directory=None, display=False,
                             smooth=False,
                             scale=False, scale_qmin=0.0, scale_qmax=-1.0,
-                            crop=False, crop_qmin=0.0, crop_qmax=0.08,
+                            crop=False, crop_qmin=0.0, crop_qmax=-1.0,
                             dash_line_index=(None,)):
     # read curves
     file_location = os.path.join(root_directory, 'Simple_Results')
@@ -27,8 +27,8 @@ def plot_DifferenceAnalysis(root_directory, from_average=False,
     if not figures_directory:
         figures_directory = os.path.join(root_directory, 'Figures')
     EXP_prefix = os.path.basename(root_directory)
-    kwargs = {'display':display, 'save':save_figures, 'directory':figures_directory,
-              'legend_loc':legend_loc, 'dash_line_index':dash_line_index}
+    kwargs = {'display': display, 'save': save_figures, 'directory': figures_directory,
+              'legend_loc': legend_loc, 'dash_line_index': dash_line_index}
     scat_obj.plot_relative_diff(filename=EXP_prefix+'_relative_ratio.'+fig_format,
                                 **kwargs)
     scat_obj.plot_profiles(log_intensity=True, filename=EXP_prefix+'_saxs_profiles.'+fig_format,
@@ -53,9 +53,10 @@ if __name__ == '__main__':
     
     parser.add_argument('--crop', type=bool, default=True)
     parser.add_argument('--crop_qmin', type=float, default=0.0)
-    parser.add_argument('--crop_qmax', type=float, default=0.08)
+    parser.add_argument('--crop_qmax', type=float, default=0.099)
     
-    parser.add_argument('--dash_line_index', help='Index starts with 1', type=str, default=None)
+    parser.add_argument('--dash_line_index', help='Index starts with 1',
+                        type=str, default=None)
 
     args = parser.parse_args()
     print(args)
