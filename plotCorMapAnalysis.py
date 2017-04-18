@@ -68,16 +68,8 @@ def plot_CorMapAnalysis(root_directory, skip=0,
                           directory=figures_directory)
 
     close('all')
-    # num_frames = len(subtract_dat_list)
-    # cormap_step = 10
-    # for last_frame in range(cormap_step, num_frames+cormap_step, cormap_step):
-    #     scat_obj.plot_cormap(display=display, last=last_frame,
-    #                          save=save_figures, filename=EXP_prefix+'_cormap_1_to_'+str(last_frame)+'.'+fig_format,
-    #                          directory=figures_directory)
-    # 
-    # close('all')
 
-if __name__ == '__main__':
+def main():
     # create an argument parser
     parser = argparse.ArgumentParser()
     parser.add_argument('-r', '--root_directory', help='Root directory for EXPERIMENTS data')
@@ -114,3 +106,7 @@ if __name__ == '__main__':
                         scale=scale, scale_qmin=scale_qmin, scale_qmax=scale_qmax,
                         crop=crop, crop_qmin=crop_qmin, crop_qmax=crop_qmax,
                         save_figures=True, figures_directory=figures_directory)
+
+
+if __name__ == '__main__':
+    main()
