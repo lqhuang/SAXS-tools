@@ -252,12 +252,15 @@ class DifferenceAnalysis(object):
             plt.ylabel(r'Intensity (arb. units.)', fontdict=self.PLOT_LABEL)
         box = ax.get_position()
         ax.set_position([box.x0, box.y0, box.width * 1.1, box.height])
-        if 'left' in legend_loc:
-            lgd = ax.legend(loc='center left', bbox_to_anchor=(1, 0.5),
-                            frameon=False, prop={'size':self.LABEL_SIZE})
-        elif 'down' in legend_loc:
-            lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15),
-                            frameon=False, prop={'size':self.LABEL_SIZE})
+        if not log_intensity:
+            lgd = ax.legend(loc=0, frameon=False, prop={'size':self.LABEL_SIZE})
+        else:
+            if 'left' in legend_loc:
+                lgd = ax.legend(loc='center left', bbox_to_anchor=(1, 0.5),
+                                frameon=False, prop={'size':self.LABEL_SIZE})
+            elif 'down' in legend_loc:
+                lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15),
+                                frameon=False, prop={'size':self.LABEL_SIZE})
         plt.title(r'SAXS Subtracted Profiles')
 
         # +++++++++++++++++++++ SAVE AND/OR DISPLAY +++++++++++++++++++++ #

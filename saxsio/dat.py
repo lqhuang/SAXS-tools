@@ -38,8 +38,14 @@ def load_dat(filepath):
                 if line[:10] == '### HEADER':
                     # print('processing HEADER section')
                     pass
-                elif line[0] == '#':
-                    # print('processing DATA section')
+                if line[0] == '#':
+                    pass
+                elif line[0] != '#':
+                    data = line.split()
+                    if len(data) == 3:
+                        qs.append(float(data[0]))
+                        Is.append(float(data[1]))
+                        Es.append(float(data[2]))
                     while True:
                         line = f.readline()
                         data = line.split()
