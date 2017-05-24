@@ -60,12 +60,6 @@ class DifferenceAnalysis(object):
     # ----------------------------------------------------------------------- #
     #                         CLASS VARIABLES                                 #
     # ----------------------------------------------------------------------- #
-    # mpl.rc('font', family='sans-serif', weight='normal', size=16)
-    PLOT_LABEL = {'family' : 'sans-serif', # 'sans-serif',
-                  'weight' : 'normal',
-                  'size' : 18}
-    LABEL_SIZE = 14
-    # plt.rc('font', **PLOT_LABEL)
     # print(plt.style.available)
     plt.style.use('classic')
     # plt.style.use('seaborn-bright')
@@ -76,12 +70,19 @@ class DifferenceAnalysis(object):
     # plt.style.use('seaborn-muted')
     # plt.style.use('seaborn-paper')
     # plt.style.use('bmh')
-    # sns.set_style("whitegrid")
     # plt.style.use('seaborn-pastel')
     # plt.style.use('ggplot')
 
-    plt.rc('text', **{'latex.unicode' : True})
-
+    plt.rcParams['mathtext.fontset'] = 'cm'
+    plt.rcParams['mathtext.rm'] = 'serif'
+    plt.rcParams['xtick.direction'] = 'in'
+    plt.rcParams['ytick.direction'] = 'in'
+    PLOT_LABEL = {'family': 'sans-serif',
+                  'weight': 'normal',
+                  'size': 14}
+    plt.rc('font', **PLOT_LABEL)
+    plt.rc('text', **{'latex.unicode': True})
+    LEGEND_SIZE = 12
     PLOT_NUM = 0
 
     # ----------------------------------------------------------------------- #
@@ -245,7 +246,7 @@ class DifferenceAnalysis(object):
         else:
             upper_lim = ylim[1]
         plt.ylim([lower_lim, upper_lim])
-        plt.xlabel(r'Scattering Vector, q ($\AA^{-1}$)', fontdict=self.PLOT_LABEL)
+        plt.xlabel(r'Scattering Vector, $q$ ($\AA^{-1}$)', fontdict=self.PLOT_LABEL)
         if log_intensity:
             plt.ylabel(r'log(I) (arb. units.)', fontdict=self.PLOT_LABEL)
         else:
@@ -253,14 +254,14 @@ class DifferenceAnalysis(object):
         box = ax.get_position()
         ax.set_position([box.x0, box.y0, box.width * 1.1, box.height])
         if not log_intensity:
-            lgd = ax.legend(loc=0, frameon=False, prop={'size':self.LABEL_SIZE})
+            lgd = ax.legend(loc=0, frameon=False, prop={'size':self.LEGEND_SIZE})
         else:
             if 'left' in legend_loc:
                 lgd = ax.legend(loc='center left', bbox_to_anchor=(1, 0.5),
-                                frameon=False, prop={'size':self.LABEL_SIZE})
+                                frameon=False, prop={'size':self.LEGEND_SIZE})
             elif 'down' in legend_loc:
                 lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15),
-                                frameon=False, prop={'size':self.LABEL_SIZE})
+                                frameon=False, prop={'size':self.LEGEND_SIZE})
         plt.title(r'SAXS Subtracted Profiles')
 
         # +++++++++++++++++++++ SAVE AND/OR DISPLAY +++++++++++++++++++++ #
@@ -312,16 +313,16 @@ class DifferenceAnalysis(object):
         else:
             upper_lim = ylim[1]
         plt.ylim([lower_lim, upper_lim])
-        plt.xlabel(r'Scattering Vector, q ($\AA^{-1}$)', fontdict=self.PLOT_LABEL)
+        plt.xlabel(r'Scattering Vector, $q$ ($\AA^{-1}$)', fontdict=self.PLOT_LABEL)
         plt.ylabel(r'Relative Ratio (%)', fontdict=self.PLOT_LABEL)
         box = ax.get_position()
         ax.set_position([box.x0, box.y0, box.width * 1.1, box.height])
         if 'left' in legend_loc:
             lgd = ax.legend(loc='center left', bbox_to_anchor=(1, 0.5),
-                            frameon=False, prop={'size':self.LABEL_SIZE})
+                            frameon=False, prop={'size':self.LEGEND_SIZE})
         elif 'down' in legend_loc:
             lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15),
-                            frameon=False, prop={'size':self.LABEL_SIZE})
+                            frameon=False, prop={'size':self.LEGEND_SIZE})
         plt.title(r'Relative Difference Ratio Analysis')
 
         # +++++++++++++++++++++ SAVE AND/OR DISPLAY +++++++++++++++++++++ #

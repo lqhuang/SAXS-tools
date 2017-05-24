@@ -28,12 +28,12 @@ def average_tiff_imgs(filelist, mask, output_filename=None):
             tiff_img.save(output_filename, 'tiff')
         except:
             raise ValueError('wrong filename for output: ', output_filename)
-    
+
     return aver_img
 
 
 def create_block_masks(mask, center, block_num=8):
-    
+
     mask = np.asarray(mask, dtype=float)
     center = np.asarray(center, dtype=float)
     block_num = np.asarray(block_num, dtype=float)
@@ -49,30 +49,33 @@ def create_block_masks(mask, center, block_num=8):
     for i, block_mask in enumerate(mask_list):
         lower = step * i
         upper = step * (i + 1)
-        cond = np.logical_and(theta>=lower, theta<upper)
-        mask_list[i][cond] = 1 
+        cond = np.logical_and(theta >= lower, theta < upper)
+        mask_list[i][cond] = 1
 
     create_masks = lambda block_mask, mask: np.logical_and(mask, block_mask)
-    block_masks = [np.array(create_masks(block_mask, mask), dtype=float) for block_mask in mask_list]
+    block_masks = [np.array(create_masks(block_mask, mask), dtype=float)
+                   for block_mask in mask_list]
 
     return block_masks
 
 
 def calc_block_radial_profile(image, center, mask_list, binsize=1., mode='sum'):
 
-    block_radial_profile = [calc_radial_profile(image, center, mask=block_mask, binsize=binsize, mode=mode) for block_mask in mask_list]
+    block_radial_profile = [calc_radial_profile(image, center, mask=block_mask,
+                                                binsize=binsize, mode=mode)
+                            for block_mask in mask_list]
     return block_radial_profile
 
 def cart2pol(x, y):
     """Summary
-    
+
     Parameters
     ----------
     x : array_like
         x values in Cartesian coordinates
     y : array_like with the same shape of x
         y values in Cartesian coordinates
-    
+
     Returns
     -------
     rho, theta: ndarray
@@ -88,14 +91,14 @@ def cart2pol(x, y):
 
 def pol2cart(rho, theta):
     """Summary
-    
+
     Parameters
     ----------
     rho : array_like
         rho values in polar coordinates
     theta : array_like
         theta values in polar coordinates
-    
+
     Returns
     -------
     x, y: ndarray
@@ -111,7 +114,7 @@ def pol2cart(rho, theta):
 # Calculate profiles
 def calc_radial_profile(image, center, binsize=1., mask=None, mode='sum'):
     """Summary
-    
+
     Parameters
     ----------
     image : 2d array
@@ -125,15 +128,15 @@ def calc_radial_profile(image, center, binsize=1., mask=None, mode='sum'):
     mode : {'sum', 'mean'}, optional
         'sum'
         By default, mode is 'sum'. This returns the summation of each ring.
-    
+
         'mean'
         Mode 'mean' returns the average value of each ring.
-    
+
     Returns
     -------
     Radial profile: 1d array
         Output array, contains summation or mean value of each ring with binsize of 1 along rho axis.
-    
+
     Raises
     ------
     ValueError
@@ -182,7 +185,7 @@ def calc_radial_profile(image, center, binsize=1., mask=None, mode='sum'):
 
 def calc_angular_profile(image, center, binsize=1., mask=None, mode='sum'):
     """Summary
-    
+
     Parameters
     ----------
     image : 2d array
@@ -196,10 +199,10 @@ def calc_angular_profile(image, center, binsize=1., mask=None, mode='sum'):
     mode : {'sum', 'mean'}, optional
         'sum'
         By default, mode is 'sum'. This returns the summation of each ring.
-    
+
         'mean'
         Mode 'mean' returns the average value of each ring.
-    
+
     Returns
     -------
     Angular profile: 1d array
@@ -216,7 +219,7 @@ def calc_angular_profile(image, center, binsize=1., mask=None, mode='sum'):
         mask = (mask > 0.5).astype(np.float64)
     else:
         mask = np.ones_like(image)
-    image = image * mask 
+    image = image * mask
     y, x = np.indices((image.shape))
     theta = np.rad2deg(np.arctan2(y-center[1], x-center[0]))
     bin_theta = theta.copy()
@@ -238,7 +241,7 @@ def calc_angular_profile(image, center, binsize=1., mask=None, mode='sum'):
 
 def calc_across_center_line_profile(image, center, angle=0., width=1, mask=None, mode='sum'):
     """Summary
-    
+
     Parameters
     ----------
     image : 2d array
@@ -254,10 +257,10 @@ def calc_across_center_line_profile(image, center, angle=0., width=1, mask=None,
     mode : {'sum', 'mean'}, optional
         'sum'
         By default, mode is 'sum'. This returns the summation of each ring.
-    
+
         'mean'
         Mode 'mean' returns the average value of each ring.
-    
+
     Returns
     -------
     Across center line profile with given width at specified angle: 2d array
