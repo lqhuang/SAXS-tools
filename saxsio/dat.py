@@ -119,7 +119,44 @@ def smooth_curve(intensity, window_length=25, polyorder=5):
                                         window_length=window_length, polyorder=polyorder)
     return smoothing_intensity
 
-def scale_curve(curve, ref_curve, qmin=0.0, qmax=-1.0, stat_func=np.sum):
+
+# least square method to scale curve
+def interp(q, I):
+    step = 1e-4
+    qmin = np.floor(q[0]*1e3+1)/1e3
+    qmax = np.floor(q[-1]*1e3)/1e3
+    new_q = np.arange(qmin, qmax, step=step)
+    f = interp1d(q, I)
+    new_I = f(new_q)
+    return new_q, new_I
+
+def larger_or_smaller(x, qmin, qmax):
+    lower_bound = x >= qmin
+    upper_bound = x < qmax
+    idx = np.logical_and(lower_bound, upper_bound)
+    return idx
+
+def linear_func(params, x, y):
+    """
+    fit y = k * x + b
+    params = (k, b)
+    """
+    return y - (params[0] * x + params[1])
+
+def leastsq_factor(input, ref, qmin, qmax):
+    """
+    Input:
+    input: (q, I)
+    ref: (q, I)
+    """
+    ref_idx = larger_or_smaller(ref[0], qmin=qmin, qmax=qmax)
+    input_idx = larger_or_smaller(input[0], qmin=qmin, qmax=qmax)
+    params, _ = leastsq(linear_func, (1, 0), (input[1][input_idx], ref[1][ref_idx]))
+    print('intercept: ', params[1])
+    return params[0]
+
+def scale_curve(curve, ref_curve, qmin=0.0, qmax=-1.0, stat_func=np.sum,
+                inc_factor=False):
     """
     Scale 1D scatter curve
     input:
@@ -127,20 +164,26 @@ def scale_curve(curve, ref_curve, qmin=0.0, qmax=-1.0, stat_func=np.sum):
         ref_curve: (q, I)
         qmin:
         qmax:
+        inc_factor: bool, default False
+            return factor or not
     output:
     """
+    assert len(curve) == 2
+    assert len(ref_curve) == 2
     curve_q, curve_I = curve[0], curve[1]
     ref_q, ref_I = ref_curve[0], ref_curve[1]
     assert len(curve_q) == len(ref_q)
-    qmin_idx = np.argmin(np.abs(ref_q - qmin))
     if qmax < 0:
-        qmax_idx = len(curve_q)
+        scale_idx = curve_q > qmin
     else:
-        qmax_idx = np.argmin(np.abs(ref_q - qmax))
-    scaling_factor =  stat_func(ref_I[qmin_idx:qmax_idx]) / stat_func(curve_I[qmin_idx:qmax_idx])
+        scale_idx = np.logical_and(curve_q >= qmin, curve_q < qmax)
+    scaling_factor =  stat_func(ref_I[scale_idx]) / stat_func(curve_I[scale_idx])
     # print("scaling_factor is ", str(scaling_factor)[0:6])
     scaling_I = scaling_factor * curve_I
-    return scaling_I
+    if inc_factor:
+        return scaling_I, scaling_factor
+    else:
+        return scaling_I
 
 def crop_curve(curve, qmin=0.0, qmax=-1.0):
     """
@@ -152,16 +195,13 @@ def crop_curve(curve, qmin=0.0, qmax=-1.0):
     output:
     """
     curve_q = curve[0]
-    qmin_idx = np.argmin(np.abs(curve_q - qmin))
     if qmax < 0:
-        qmax_idx = np.argmax(curve_q)
+        crop_idx = curve_q >= qmin
     else:
-        qmax_idx = np.argmin(np.abs(curve_q - qmax))
-
-    curve_q = np.asarray(curve[0][qmin_idx:qmax_idx+1])
-    curve_I = np.asarray(curve[1][qmin_idx:qmax_idx+1])
-    curve_E = np.asarray(curve[2][qmin_idx:qmax_idx+1])
-
+        crop_idx = np.logical_and(curve_q >= qmin, curve_q < qmax)
+    curve_q = np.asarray(curve[0][crop_idx])
+    curve_I = np.asarray(curve[1][crop_idx])
+    curve_E = np.asarray(curve[2][crop_idx])
     return curve_q, curve_I, curve_E
 
 def averge_curves(curves_dat_list):
