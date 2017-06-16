@@ -76,11 +76,14 @@ def analysis_dat():
     if log_I:
         for data in data_list:
             data['scaling_I'] = np.log(data['scaling_I'])
-    for data in data_list:
-        ax0.plot(data['q'], data['scaling_I'], label=data['filename'].replace('_', ' '), linewidth=1.5, linestyle='-')
+        for data in data_list:
+            ax0.plot(data['q'], data['scaling_I'], label=data['filename'].replace('_', ' '), linewidth=1.5, linestyle='-')
     lgd = ax0.legend(loc=0, frameon=False, prop={'size':14})
     ax0.set_xlabel(r'Scattering Vector, q ($\AA^{-1}$)')
-    ax0.set_ylabel('Intensity (arb. unit)')
+    if log_I:
+        ax0.set_ylabel('Intensity (arb. unit in log scale)')
+    else:
+        ax0.set_ylabel('Intensity (arb. unit)')
     ax0.set_title('SAXS Profiles')
 
     for data in data_list:
