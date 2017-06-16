@@ -191,7 +191,7 @@ class DifferenceAnalysis(object):
         """
         index starts from 1
         """
-        for i, data_dict in self.data_dict_list:
+        for i, data_dict in enumerate(self.data_dict_list):
             if i+1 in dash_line_index:
                 data_dict['linestyle'] = '--'
         self.keys = self.data_dict_list[0].keys()
