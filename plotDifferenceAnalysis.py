@@ -3,7 +3,7 @@ import argparse
 from matplotlib.pyplot import close
 from saxsio import dat
 from DifferenceAnalysis import DifferenceAnalysis
-from utils import print_arguments
+from utils import print_arguments, str2bool
 
 def plot_DifferenceAnalysis(root_directory, from_average=False, log_intensity=True,
                             save_figures=True, fig_format='png', legend_loc='left',
@@ -46,21 +46,21 @@ def main():
     parser = argparse.ArgumentParser(description='Process some integers.')
     parser.add_argument('-r', '--root_directory', help='Root directory for EXPERIMENTS data')
     parser.add_argument('-a', '--from_average', help='Process curves from average dats',
-                        type=bool, default=False)
+                        type=str2bool, default=False)
     parser.add_argument('-f', '--figures_directory',
                         help='Figures directory in root directory for Difference Analysis (default=Figures)',
                         type=str, default='Figures')
     parser.add_argument('--display', help='Display figures or not. (default=False)',
-                        type=bool, default=False)
-    parser.add_argument('--log_intensity', help='Plot profiles with log intensity or not. (default=True)',
-                        type=bool, default=False)
+                        type=str2bool, default=False)
+    parser.add_argument('--log_intensity', help='Plot profiles with log intensity or not. (default=False)',
+                        type=str2bool, default='False')
     parser.add_argument('--baseline_index', help='Index for baseline starts from 1 (default=1)',
                         type=int, default=1)
-    parser.add_argument('--smooth', help='Smooth curves by savgol filter (default=True)', type=bool, default=True)
-    parser.add_argument('--scale', help='Whether to scale curves (default=False)', type=bool, default=False)
+    parser.add_argument('--smooth', help='Smooth curves by savgol filter (default=True)', type=str2bool, default=True)
+    parser.add_argument('--scale', help='Whether to scale curves (default=False)', type=str2bool, default=False)
     parser.add_argument('--scale_qmin', help='min q for scaling', type=float, default=0.0)
     parser.add_argument('--scale_qmax', help='max q for scaling', type=float, default=-1.0)
-    parser.add_argument('--crop', help='Whether to crop curves (default=True)', type=bool, default=True)
+    parser.add_argument('--crop', help='Whether to crop curves (default=True)', type=str2bool, default=True)
     parser.add_argument('--crop_qmin', help='min q for cropping', type=float, default=0.0)
     parser.add_argument('--crop_qmax', help='max q for cropping', type=float, default=-1.0)
     parser.add_argument('--dash_line_index', help='Index for dash line in figures starts from 1, eg: 1,2,3. (default=None)',
@@ -75,7 +75,6 @@ def main():
     figures_directory = os.path.join(root_directory, args.figures_directory)
     display = args.display
     log_intensity = args.log_intensity
-
     baseline_index = args.baseline_index
 
     smooth = args.smooth

@@ -5,7 +5,7 @@ import argparse
 from matplotlib.pyplot import close
 from CorMapAnalysis import ScatterAnalysis
 from saxsio import dat
-from utils import find_common_string_from_list, print_arguments
+from utils import find_common_string_from_list, print_arguments, str2bool
 
 
 def plot_CorMapAnalysis(root_directory, skip=0,
@@ -77,10 +77,10 @@ def main():
                         help='Figures directory in root directory for CorMap Analysis (default=Figures)',
                         type=str, default='Figures')
     parser.add_argument('--skip', help='Frames need to be skipped (default=1)', type=int, default=0)
-    parser.add_argument('--crop', help='Whether to crop curves (default=False)', type=bool, default=False)
+    parser.add_argument('--crop', help='Whether to crop curves (default=False)', type=str2bool, default=False)
     parser.add_argument('--crop_qmin', help='min q for cropping',  type=float, default=0.0)
     parser.add_argument('--crop_qmax', help='max q for cropping',  type=float, default=-1.0)
-    parser.add_argument('--scale', help='Whether to scale curves (default=False)', type=bool, default=False)
+    parser.add_argument('--scale', help='Whether to scale curves (default=False)', type=str2bool, default=False)
     parser.add_argument('--scale_qmin', help='min q for scaling',  type=float, default=0.0)
     parser.add_argument('--scale_qmax', help='max q for scaling',  type=float, default=-1.0)
 

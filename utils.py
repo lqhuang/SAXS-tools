@@ -2,6 +2,14 @@ import os
 from functools import reduce
 from difflib import SequenceMatcher
 
+def str2bool(para):
+    if para.lower() in ('true', 'yes', 't', 'y', '1'):
+        return True
+    elif para.lower() in ('false', 'no', 'f', 'n', '0'):
+        return False
+    else:
+        from argparse import ArgumentTypeError
+        raise ArgumentTypeError('Boolean value expected.')
 
 def find_common_string_from_list(string_list):
     common_string = reduce(find_common_string, string_list)
