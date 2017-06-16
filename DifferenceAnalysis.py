@@ -18,6 +18,7 @@ def get_data_dict(dat_file, smooth=False, crop=False,
     else:
         start = -2
     data_dict['label'] = filename[start+2:].replace('.dat', '').replace('_', ' ')
+    data_dict['linestyle'] = '-'
     q, intensity, error = dat.load_RAW_dat(dat_file)
     if crop:
         q, intensity, error = dat.crop_curve((q, intensity, error),
@@ -186,6 +187,15 @@ class DifferenceAnalysis(object):
     # ----------------------------------------------------------------------- #
     #                         INSTANCE METHODS                                #
     # ----------------------------------------------------------------------- #
+    def update_linestyle(self, dash_line_index=(None,)):
+        """
+        index starts from 1
+        """
+        for i, data_dict in self.data_dict_list:
+            if i+1 in dash_line_index:
+                data_dict['linestyle'] = '--'
+        self.keys = self.data_dict_list[0].keys()
+
     def calc_log_intensity(self):
         for data_dict in self.data_dict_list:
             data_dict['log_I'] = np.log(data_dict['I'])
@@ -221,6 +231,7 @@ class DifferenceAnalysis(object):
         self.PLOT_NUM += 1
 
         # ++++++++++++++++++++++++++++++ PLOT +++++++++++++++++++++++++++ #
+        self.update_linestyle(dash_line_index=dash_line_index)
         fig = plt.figure(self.PLOT_NUM)
         ax = plt.subplot(111)
         intensity_key = 'I'
@@ -229,13 +240,9 @@ class DifferenceAnalysis(object):
                 self.calc_log_intensity()
             intensity_key = 'log_I'
         for i, data_dict in enumerate(self.data_dict_list):
-            if i+1 in dash_line_index:
-                linestyle = '--'
-            else:
-                linestyle = '-'
             plt.plot(data_dict['q'], data_dict[intensity_key],
                      label=data_dict['label'],
-                     linestyle=linestyle, linewidth=1)
+                     linestyle=data_dict['linestyle'], linewidth=1)
         ylim = ax.get_ylim()
         if ylim[0] >= 10.0:
             lower_lim = -5.0
@@ -293,16 +300,13 @@ class DifferenceAnalysis(object):
         self.calc_relative_diff(baseline_index=baseline_index, baseline_dat=baseline_dat)
 
         # ++++++++++++++++++++++++++++++ PLOT +++++++++++++++++++++++++++ #
+        self.update_linestyle(dash_line_index=dash_line_index)
         fig = plt.figure(self.PLOT_NUM)
         ax = plt.subplot(111)
         for i, data_dict in enumerate(self.data_dict_list):
-            if i+1 in dash_line_index:
-                linestyle = '--'
-            else:
-                linestyle = '-'
             plt.plot(data_dict['q'], data_dict['relative_diff'],
                      label=data_dict['label'],
-                     linestyle=linestyle, linewidth=1)
+                     linestyle=data_dict['linestyle'], linewidth=1)
         ylim = ax.get_ylim()
         if ylim[0] >= -2.0:
             lower_lim = -5.0
@@ -354,16 +358,13 @@ class DifferenceAnalysis(object):
         self.calc_absolute_diff(baseline_index=baseline_index, baseline_dat=baseline_dat)
 
         # ++++++++++++++++++++++++++++++ PLOT +++++++++++++++++++++++++++ #
+        self.update_linestyle(dash_line_index=dash_line_index)
         fig = plt.figure(self.PLOT_NUM)
         ax = plt.subplot(111)
         for i, data_dict in enumerate(self.data_dict_list):
-            if i+1 in dash_line_index:
-                linestyle = '--'
-            else:
-                linestyle = '-'
             plt.plot(data_dict['q'], data_dict['absolute_diff'],
                      label=data_dict['label'],
-                     linestyle=linestyle, linewidth=1)
+                     linestyle=data_dict['linestyle'], linewidth=1)
         ylim = ax.get_ylim()
         if ylim[0] >= -2.0:
             lower_lim = -5.0
