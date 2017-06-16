@@ -202,9 +202,9 @@ class DifferenceAnalysis(object):
             data_dict['relative_diff'] *= 100
         self.keys = self.data_dict_list[0].keys()
 
-    def calc_absolute_diff(self, baseline_dat=None):
+    def calc_absolute_diff(self, baseline_index=1, baseline_dat=None):
         if not baseline_dat:
-            baseline_dict = self.data_dict_list[0]
+            baseline_dict = self.data_dict_list[baseline_index-1]
         else:
             baseline_dict = get_data_dict(baseline_dat, crop=self.crop,
                                           crop_qmin=self.crop_qmin, crop_qmax=self.crop_qmax)
@@ -330,6 +330,67 @@ class DifferenceAnalysis(object):
             pass
         else:
             filename = 'relative_ratio.png'
+        if save:
+            if directory:
+                if not os.path.exists(directory):
+                    os.mkdir(directory)
+                fig_path = os.path.join(directory, filename)
+            else:
+                fig_path = filename
+            plt.savefig(fig_path, dpi=600, bbox_extra_artists=(lgd,), bbox_inches='tight')
+        if display:
+            ax.legend().draggable()
+            # plt.tight_layout()
+            plt.show(fig)
+
+    def plot_absolute_diff(self, baseline_index=0, baseline_dat=None,
+                           dash_line_index=(None,),
+                           display=True, save=False, filename=None, legend_loc='left',
+                           directory=None):
+        ###########   ABSOLUTE Ratio  ####################
+        self.PLOT_NUM += 1
+
+        # ++++++++++++ CALCULATE ABSOLUTE DIFFERENCE RATIO ++++++++++++++ #
+        self.calc_absolute_diff(baseline_index=baseline_index, baseline_dat=baseline_dat)
+
+        # ++++++++++++++++++++++++++++++ PLOT +++++++++++++++++++++++++++ #
+        fig = plt.figure(self.PLOT_NUM)
+        ax = plt.subplot(111)
+        for i, data_dict in enumerate(self.data_dict_list):
+            if i+1 in dash_line_index:
+                linestyle = '--'
+            else:
+                linestyle = '-'
+            plt.plot(data_dict['q'], data_dict['absolute_diff'],
+                     label=data_dict['label'],
+                     linestyle=linestyle, linewidth=1)
+        ylim = ax.get_ylim()
+        if ylim[0] >= -2.0:
+            lower_lim = -5.0
+        else:
+            lower_lim = ylim[0]
+        if ylim[1] <= 2.0:
+            upper_lim = 5.0
+        else:
+            upper_lim = ylim[1]
+        plt.ylim([lower_lim, upper_lim])
+        plt.xlabel(r'Scattering Vector, $q$ ($\AA^{-1}$)', fontdict=self.PLOT_LABEL)
+        plt.ylabel(r'Absolute Difference (arb. units.)', fontdict=self.PLOT_LABEL)
+        box = ax.get_position()
+        ax.set_position([box.x0, box.y0, box.width * 1.1, box.height])
+        if 'left' in legend_loc:
+            lgd = ax.legend(loc='center left', bbox_to_anchor=(1, 0.5),
+                            frameon=False, prop={'size':self.LEGEND_SIZE})
+        elif 'down' in legend_loc:
+            lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15),
+                            frameon=False, prop={'size':self.LEGEND_SIZE})
+        plt.title(r'Absolute Difference Analysis')
+
+        # +++++++++++++++++++++ SAVE AND/OR DISPLAY +++++++++++++++++++++ #
+        if filename:
+            pass
+        else:
+            filename = 'absolute_diff.png'
         if save:
             if directory:
                 if not os.path.exists(directory):

@@ -6,7 +6,7 @@ from DifferenceAnalysis import DifferenceAnalysis
 from utils import print_arguments
 
 def plot_DifferenceAnalysis(root_directory, from_average=False, log_intensity=True,
-                            save_figures=True, fig_format='png', legend_loc='down',
+                            save_figures=True, fig_format='png', legend_loc='left',
                             figures_directory=None, display=False,
                             baseline_index=1, smooth=False,
                             scale=False, scale_qmin=0.0, scale_qmax=-1.0,
@@ -30,12 +30,15 @@ def plot_DifferenceAnalysis(root_directory, from_average=False, log_intensity=Tr
     EXP_prefix = os.path.basename(root_directory)
     kwargs = {'display': display, 'save': save_figures, 'directory': figures_directory,
               'legend_loc': legend_loc, 'dash_line_index': dash_line_index}
-    scat_obj.plot_relative_diff(filename=EXP_prefix+'_relative_ratio.'+fig_format,
-                                baseline_index=baseline_index,
-                                **kwargs)
     scat_obj.plot_profiles(log_intensity=log_intensity,
                            filename=EXP_prefix+'_saxs_profiles.'+fig_format,
                            **kwargs)
+    scat_obj.plot_relative_diff(filename=EXP_prefix+'_relative_ratio.'+fig_format,
+                                baseline_index=baseline_index,
+                                **kwargs)
+    scat_obj.plot_absolute_diff(filename=EXP_prefix+'_absolute_diff.'+fig_format,
+                                baseline_index=baseline_index,
+                                **kwargs)
     close('all')
 
 def main():
@@ -47,10 +50,10 @@ def main():
     parser.add_argument('-f', '--figures_directory',
                         help='Figures directory in root directory for Difference Analysis (default=Figures)',
                         type=str, default='Figures')
-    parser.add_argument('--display', help='Display figures or not',
+    parser.add_argument('--display', help='Display figures or not. (default=False)',
                         type=bool, default=False)
-    parser.add_argument('--log_intensity', help='Plot profiles with log intensity or not',
-                        type=bool, default=True)
+    parser.add_argument('--log_intensity', help='Plot profiles with log intensity or not. (default=True)',
+                        type=bool, default=False)
     parser.add_argument('--baseline_index', help='Index for baseline starts from 1 (default=1)',
                         type=int, default=1)
     parser.add_argument('--smooth', help='Smooth curves by savgol filter (default=True)', type=bool, default=True)
