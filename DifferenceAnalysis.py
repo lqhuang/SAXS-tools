@@ -45,8 +45,13 @@ def subtract_data_dict(data_dict_list, buffer_dict, smooth=False,
         data_dict['filename'] = 'S_' + data_dict['filename']
         data_dict['buffer'] = buffer_dict['filename']
         if scale:
-            data_dict['I'] = dat.scale_curve((data_dict['q'], data_dict['I']),
-                                             (ref_q, ref_I), qmin=scale_qmin, qmax=scale_qmax)
+            # data_dict['I'] = dat.scale_curve((data_dict['q'], data_dict['I']),
+            #                                  (ref_q, ref_I), qmin=scale_qmin, qmax=scale_qmax)
+            data_dict['I'], data_dict['scaling_factor'] = \
+                dat.scale_curve((data_dict['q'], data_dict['I']),
+                                (ref_q, ref_I), qmin=scale_qmin, qmax=scale_qmax,
+                                inc_factor=True)
+            print('For {0} file, the scaling factor is {1}'.format(data_dict['filename'], data_dict['scaling_factor']))
         data_dict['I'] -= buffer_dict['I']
         if smooth:
             data_dict['I'] = dat.smooth_curve(data_dict['I'])
@@ -126,14 +131,18 @@ class DifferenceAnalysis(object):
         average_dat_list = [fname for fname in file_list \
                             if fname.split(os.path.sep)[-1].lower().startswith('a') \
                                and 'buffer' not in fname.split(os.path.sep)[-1].lower()]
+        if len(average_dat_list) == 0:
+            raise FileNotFoundError('Do not find any average dats')
         # read buffer
         buffer_dict = dict()
         if buffer_dat:
             buffer_dict['q'], buffer_dict['I'], buffer_dict['E'] = dat.load_RAW_dat(buffer_dat)
         else:
             buffer_dat = [fname for fname in file_list if 'buffer' in fname.lower()]
-            # assert len(buffer_dat) == 1
-            print('Use buffer file: ', buffer_dat[0])
+            try:
+                print('Use buffer file:', buffer_dat[0])
+            except IndexError as error:
+                raise FileNotFoundError('Please check whether exist a buffer dat file')
             buffer_dict = get_data_dict(buffer_dat[0], crop=crop,
                                         crop_qmin=crop_qmin, crop_qmax=crop_qmax)
         # subtracting
@@ -165,9 +174,9 @@ class DifferenceAnalysis(object):
                               for dat_file in subtracted_dat_list]
             cls = DifferenceAnalysis(data_dict_list)
         elif from_average and len(subtracted_dat_list) == 0:
+            print('Warning: Do not find any subtracted curves, try to read data from average curves')
             cls = DifferenceAnalysis.from_average_dats(subtracted_dat_location, smooth=smooth,
                                                        crop=crop, crop_qmin=crop_qmin, crop_qmax=crop_qmax)
-            print('Warning: Do not find any subtracted curves, read data from average curves')
         elif not from_average and len(subtracted_dat_list) == 0:
             raise ValueError('Do not exist subtracted dat files')
         return cls

@@ -74,10 +74,11 @@ def main():
     root_directory = args.root_directory
     figures_directory = os.path.join(root_directory, args.figures_directory)
     display = args.display
-    log_intensity = args.log_intensity
-    baseline_index = args.baseline_index
 
+    from_average = args.from_average
+    log_intensity = args.log_intensity
     smooth = args.smooth
+    baseline_index = args.baseline_index
 
     crop = args.crop
     crop_qmin = args.crop_qmin
@@ -90,12 +91,12 @@ def main():
     try:
         dash_line_index = args.dash_line_index.split(',')
         dash_line_index = [int(idx) for idx in dash_line_index]
-        print('dash line index:', dash_line_index)
     except AttributeError:
         dash_line_index = (None,)
 
     # run
-    plot_DifferenceAnalysis(root_directory, log_intensity=log_intensity,
+    plot_DifferenceAnalysis(root_directory, from_average=from_average,
+                            log_intensity=log_intensity,
                             save_figures=True, figures_directory=figures_directory, display=display,
                             baseline_index=baseline_index, smooth=smooth,
                             scale=scale, scale_qmin=scale_qmin, scale_qmax=scale_qmax,
