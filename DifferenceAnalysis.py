@@ -1,15 +1,19 @@
 import os
 import glob
+import csv
+
 import numpy as np
 from matplotlib import pyplot as plt
-# import matplotlib as mpl
-from saxsio import dat
+
+from saxsio import dat, gnom
+from utils import run_system_command
 
 
 def get_data_dict(dat_file, smooth=False, crop=False,
                   crop_qmin=0.0, crop_qmax=-1.0):
     data_dict = dict()
     filename = dat_file.split(os.path.sep)[-1]
+    data_dict['filepath'] = dat_file
     data_dict['filename'] = filename
     if 'A_' in filename[0:2]:
         start = 0
@@ -91,11 +95,24 @@ class DifferenceAnalysis(object):
     LEGEND_SIZE = 12
     PLOT_NUM = 0
 
+    XLABEL = dict()
+    XLABEL['guinier'] = r'$q^2$ ($\mathrm{\AA^{-2}}$)'
+    XLABEL['kratky'] = r'Scattering Vector, $q$ ($\mathrm{\AA^{-1}}$)'
+    XLABEL['porod'] = r'$q^4$ ($\mathrm{\AA^{-4}}$)'
+    YLABEL = dict()
+    YLABEL['guinier'] = r'$\mathrm{ln}(I(q))$'
+    YLABEL['kratky'] = r'$I(q) \times q^2$'
+    YLABEL['porod'] = r'$I(q) \times q^4$'
+    YLABEL['relative_diff'] = r'Relative Ratio (%)'
+    YLABEL['absolute_diff'] = r'Absolute Difference (arb. units.)'
+
     # ----------------------------------------------------------------------- #
     #                         CONSTRUCTOR METHOD                              #
     # ----------------------------------------------------------------------- #
     def __init__(self, data_dict_list, buffer_dict=None,
-                 crop=False, crop_qmin=0.0, crop_qmax=-1.0):
+                 crop=False, crop_qmin=0.0, crop_qmax=-1.0,
+                 file_list=None):
+        self.file_list = file_list
         self.num_curves = len(data_dict_list)
         self.data_dict_list = data_dict_list
         self.keys = data_dict_list[0].keys()
@@ -154,7 +171,8 @@ class DifferenceAnalysis(object):
                                                        scale=scale, ref_dat=ref_dat,
                                                        scale_qmin=scale_qmin, scale_qmax=scale_qmax,
                                                        crop=crop, crop_qmin=crop_qmin, crop_qmax=crop_qmax)
-        cls = DifferenceAnalysis(subtracted_data_dict_list, buffer_dict=buffer_dict)
+        cls = DifferenceAnalysis(subtracted_data_dict_list, buffer_dict=buffer_dict, file_list=None)
+        # Undone: pass file_list of dats into class
         return cls
 
     @classmethod
@@ -172,7 +190,7 @@ class DifferenceAnalysis(object):
             data_dict_list = [get_data_dict(dat_file, smooth=smooth, crop=crop,
                                             crop_qmin=crop_qmin, crop_qmax=crop_qmax) \
                               for dat_file in subtracted_dat_list]
-            cls = DifferenceAnalysis(data_dict_list)
+            cls = DifferenceAnalysis(data_dict_list, file_list=subtracted_dat_list)
         elif from_average and len(subtracted_dat_list) == 0:
             print('Warning: Do not find any subtracted curves, try to read data from average curves')
             cls = DifferenceAnalysis.from_average_dats(subtracted_dat_location, smooth=smooth,
@@ -190,7 +208,7 @@ class DifferenceAnalysis(object):
         # read data
         # Notice that here is no option !
         data_dict_list = [get_data_dict(dat_file) for dat_file in file_list]
-        cls = DifferenceAnalysis(data_dict_list)
+        cls = DifferenceAnalysis(data_dict_list, file_list=file_list)
         return cls
 
     # ----------------------------------------------------------------------- #
@@ -207,7 +225,7 @@ class DifferenceAnalysis(object):
 
     def calc_log_intensity(self):
         for data_dict in self.data_dict_list:
-            data_dict['log_I'] = np.log(data_dict['I'])
+            data_dict['log_I'] = np.log10(data_dict['I'])
         self.keys = self.data_dict_list[0].keys()
 
     def calc_relative_diff(self, baseline_index=1, baseline_dat=None):
@@ -231,59 +249,140 @@ class DifferenceAnalysis(object):
             data_dict['absolute_diff'] = data_dict['I'] - baseline_dict['I']
         self.keys = self.data_dict_list[0].keys()
 
+    def calc_radius_of_gyration(self, options=''):
+        """
+        autorg:
+        output for csv support:
+        File,Rg,Rg StDev,I(0),I(0) StDev,First point,Last point,Quality,Aggregated
+        output for ssv support:
+        Rg,Rg StDev,I(0),I(0) StDev,First point,Last point,Quality,Aggregated,File
+
+        ref: https://www.embl-hamburg.de/biosaxs/manuals/autorg.html
+        """
+        if self.file_list is None:
+            raise FileNotFoundError('Please specifiy input dat files')
+        output_format = '-f csv'
+        autorg = 'autorg {0} {1} {2}'.format(' '.join(self.file_list), output_format, options)
+        log = run_system_command(autorg).splitlines()
+        assert self.num_curves == len(log) - 1
+        rg_keys = log[0].split(',')
+        # skip 'File' information
+        for i, data_dict in enumerate(self.data_dict_list):
+            rg_data = log[i+1].split(',')
+            data_dict['Rg'] = dict()
+            for j, key in enumerate(rg_keys, 0):
+                data_dict['Rg'][key] = rg_data[j]
+        self.keys = self.data_dict_list[0].keys()
+
+    def calc_pair_distribution(self, output_dir='.', options=''):
+        """
+        datgnom4
+        calculate pair distribution function
+        read GNOM file (Version 4.5a revised 09/02/02)
+
+        ref:
+        https://www.embl-hamburg.de/biosaxs/manuals/datgnom.html
+        https://www.embl-hamburg.de/biosaxs/manuals/gnom.html
+        """
+        if 'Rg' not in self.keys:
+            self.calc_radius_of_gyration()
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+        for data_dict in self.data_dict_list:
+            rg = data_dict['Rg']['Rg']
+            if data_dict['filename'].endswith('.dat'):
+                output_name = os.path.join(output_dir, data_dict['filename'][:-4] + '.out')
+            else:
+                print('Warning: {0} file do not end with .dat format'.format(data_dict['filename']))
+                output_name = os.path.join(output_dir, data_dict['filename']+'.out')
+            datgnom = 'datgnom4 {0} --rg {1} --output {2} {3}'.format(
+                data_dict['filepath'], rg, output_name, options
+            )
+            log = run_system_command(datgnom)
+            data_dict['pair_distribution'] = gnom.parse_gnom_file(output_name)
+        self.keys = self.data_dict_list[0].keys()
+
+    def calc_guinier(self):
+        """
+        Guinier Analysis
+        qg = q ** 2
+        Ig = ln(I)
+        """
+        for data_dict in self.data_dict_list:
+            data_dict['guinier'] = dict()
+            data_dict['guinier']['x'] = data_dict['q'] ** 2
+            data_dict['guinier']['y'] = np.log2(data_dict['I']) # in ln scale
+        self.keys = self.data_dict_list[0].keys()
+
+    def calc_kratky(self):
+        """
+        Kratky Analysis
+        qk = q
+        Ik = I * q ** 2
+        """
+        for data_dict in self.data_dict_list:
+            data_dict['kratky'] = dict()
+            data_dict['kratky']['x'] = data_dict['q']
+            data_dict['kratky']['y'] = data_dict['I'] * data_dict['q'] ** 2
+        self.keys = self.data_dict_list[0].keys()
+
+    def calc_porod(self):
+        """
+        Porod Analysis
+        qp = q ** 4
+        Ip = I * q ** 4
+        """
+        for data_dict in self.data_dict_list:
+            data_dict['porod'] = dict()
+            data_dict['porod']['x'] = data_dict['q'] ** 4
+            data_dict['porod']['y'] = data_dict['I'] * data_dict['porod']['x']
+        self.keys = self.data_dict_list[0].keys()
+
     # ----------------------- PLOT ------------------------#
     def plot_profiles(self, log_intensity=True,
                       dash_line_index=(None,),
                       display=True, save=False, filename=None, legend_loc='left',
                       directory=None):
-        ###########   SAXS Profiles  ####################
+        """
+        SAXS Profiles
+        """
         self.PLOT_NUM += 1
 
-        # ++++++++++++++++++++++++++++++ PLOT +++++++++++++++++++++++++++ #
-        self.update_linestyle(dash_line_index=dash_line_index)
-        fig = plt.figure(self.PLOT_NUM)
-        ax = plt.subplot(111)
+        # +++++++++++++++++++ CALCULATE INTENSITY +++++++++++++++++++++++ #
         intensity_key = 'I'
         if log_intensity:
             if 'log_I' not in self.keys:
                 self.calc_log_intensity()
             intensity_key = 'log_I'
+
+        # ++++++++++++++++++++++++++++++ PLOT +++++++++++++++++++++++++++ #
+        self.update_linestyle(dash_line_index=dash_line_index)
+        fig = plt.figure(self.PLOT_NUM)
+        ax = plt.subplot(111)
         for i, data_dict in enumerate(self.data_dict_list):
-            plt.plot(data_dict['q'], data_dict[intensity_key],
-                     label=data_dict['label'],
-                     linestyle=data_dict['linestyle'], linewidth=1)
-        ylim = ax.get_ylim()
-        if ylim[0] >= 10.0:
-            lower_lim = -5.0
-        else:
-            lower_lim = ylim[0]
-        if ylim[1] <= 2.0:
-            upper_lim = 5.0
-        else:
-            upper_lim = ylim[1]
-        plt.ylim([lower_lim, upper_lim])
-        plt.xlabel(r'Scattering Vector, $q$ ($\AA^{-1}$)', fontdict=self.PLOT_LABEL)
+            ax.plot(data_dict['q'], data_dict[intensity_key],
+                    label=data_dict['label'],
+                    linestyle=data_dict['linestyle'], linewidth=1)
+        ax.set_xlabel(r'Scattering Vector, $q$ ($\mathrm{\AA^{-1}}$)', fontdict=self.PLOT_LABEL)
         if log_intensity:
-            plt.ylabel(r'log(I) (arb. units.)', fontdict=self.PLOT_LABEL)
+            ax.set_ylabel(r'log(I) (arb. units.)', fontdict=self.PLOT_LABEL)
         else:
-            plt.ylabel(r'Intensity (arb. units.)', fontdict=self.PLOT_LABEL)
+            ax.set_ylabel(r'Intensity (arb. units.)', fontdict=self.PLOT_LABEL)
         box = ax.get_position()
         ax.set_position([box.x0, box.y0, box.width * 1.1, box.height])
         if not log_intensity:
-            lgd = ax.legend(loc=0, frameon=False, prop={'size':self.LEGEND_SIZE})
+            lgd = ax.legend(loc=0, frameon=False, prop={'size': self.LEGEND_SIZE})
         else:
             if 'left' in legend_loc:
                 lgd = ax.legend(loc='center left', bbox_to_anchor=(1, 0.5),
-                                frameon=False, prop={'size':self.LEGEND_SIZE})
+                                frameon=False, prop={'size': self.LEGEND_SIZE})
             elif 'down' in legend_loc:
                 lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15),
-                                frameon=False, prop={'size':self.LEGEND_SIZE})
-        plt.title(r'SAXS Subtracted Profiles')
+                                frameon=False, prop={'size': self.LEGEND_SIZE})
+        ax.set_title(r'SAXS Subtracted Profiles')
 
         # +++++++++++++++++++++ SAVE AND/OR DISPLAY +++++++++++++++++++++ #
-        if filename:
-            pass
-        else:
+        if not filename:
             filename = 'saxs_profiles.png'
         if save:
             if directory:
@@ -292,30 +391,144 @@ class DifferenceAnalysis(object):
                 fig_path = os.path.join(directory, filename)
             else:
                 fig_path = filename
-            plt.savefig(fig_path, dpi=600, bbox_extra_artists=(lgd,), bbox_inches='tight')
+            fig.savefig(fig_path, dpi=600, bbox_extra_artists=(lgd,), bbox_inches='tight')
         if display:
             ax.legend().draggable()
             # plt.tight_layout()
-            plt.show(fig)
+            fig.show(fig)
 
-    def plot_relative_diff(self, baseline_index=0, baseline_dat=None,
-                           dash_line_index=(None,),
-                           display=True, save=False, filename=None, legend_loc='left',
-                           directory=None):
+    def plot_analysis(self, analysis,
+                      dash_line_index=(None,),
+                      display=True, save=False, filename=None, legend_loc='left',
+                      directory=None):
+        """
+        SAXS Analysis (guinier, kratky, porod)
+        """
+        self.PLOT_NUM += 1
+
+        # +++++++++++++++++++++ CALCULATE ANALYSIS ++++++++++++++++++++++ #
+        analysis = str(analysis).lower()
+        if analysis not in self.keys:
+            try:
+                eval('self.calc_{0}()'.format(analysis))
+            except NameError:
+                raise ValueError('Error: unsupport type of analysis. Please check again.')
+
+        # ++++++++++++++++++++++++++++++ PLOT +++++++++++++++++++++++++++ #
+        self.update_linestyle(dash_line_index=dash_line_index)
+        fig = plt.figure(self.PLOT_NUM)
+        ax = plt.subplot(111)
+        for data_dict in self.data_dict_list:
+            ax.plot(data_dict[analysis]['x'], data_dict[analysis]['y'],
+                    label=data_dict['label'],
+                    linestyle=data_dict['linestyle'], linewidth=1)
+        ax.set_xlabel(self.XLABEL[analysis], fontdict=self.PLOT_LABEL)
+        ax.set_ylabel(self.YLABEL[analysis], fontdict=self.PLOT_LABEL)
+        box = ax.get_position()
+        ax.set_position([box.x0, box.y0, box.width * 1.1, box.height])
+        if 'left' in legend_loc:
+            lgd = ax.legend(loc='center left', bbox_to_anchor=(1, 0.5),
+                            frameon=False, prop={'size': self.LEGEND_SIZE})
+        elif 'down' in legend_loc:
+            lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15),
+                            frameon=False, prop={'size': self.LEGEND_SIZE})
+        ax.set_title(r'SAXS {0} Analysis'.format(analysis.capitalize()))
+
+        # +++++++++++++++++++++ SAVE AND/OR DISPLAY +++++++++++++++++++++ #
+        if not filename:
+            filename = 'saxs_{}_analysis.png'.format(analysis)
+        if save:
+            if directory:
+                if not os.path.exists(directory):
+                    os.mkdir(directory)
+                fig_path = os.path.join(directory, filename)
+            else:
+                fig_path = filename
+            fig.savefig(fig_path, dpi=600, bbox_extra_artists=(lgd,), bbox_inches='tight')
+        if display:
+            ax.legend().draggable()
+            # plt.tight_layout()
+            fig.show()
+
+    def plot_pair_distribution(self, output_dir='.',
+                               dash_line_index=(None,),
+                               display=True, save=False, filename=None, legend_loc='left',
+                               directory=None):
+        """
+        Pair distribution function
+        """
+        self.PLOT_NUM += 1
+
+        # +++++++++++++++++++++ CALCULATE PDF +++++++++++++++++++++++++++ #
+        if 'pair_distribution' not in self.keys:
+            self.calc_pair_distribution(output_dir=output_dir)
+        print(self.data_dict_list[0]['Rg'].items())
+        print(self.data_dict_list[0]['Rg']['Rg'])
+        print(self.data_dict_list[0]['pair_distribution']['reciprocal_rg'])
+        print(self.data_dict_list[0]['pair_distribution']['real_rg'])
+
+        # ++++++++++++++++++++++++++++++ PLOT +++++++++++++++++++++++++++ #
+        self.update_linestyle(dash_line_index=dash_line_index)
+        fig = plt.figure(self.PLOT_NUM)
+        ax = plt.subplot(111)
+        intensity_key = 'I'
+        for i, data_dict in enumerate(self.data_dict_list):
+            ax.plot(data_dict['pair_distribution']['r'], data_dict['pair_distribution']['pr'],
+                    label=r'{0} $D_{{max}}={1:.2f}$'.format(
+                        data_dict['label'], data_dict['pair_distribution']['Dmax']),
+                    linestyle=data_dict['linestyle'], linewidth=1)
+        ax.set_xlabel(r'$r$ ($\mathrm{\AA}$)', fontdict=self.PLOT_LABEL)
+        ax.set_ylabel(r'$P(r)$', fontdict=self.PLOT_LABEL)
+        box = ax.get_position()
+        ax.set_position([box.x0, box.y0, box.width * 1.1, box.height])
+        if 'left' in legend_loc:
+            lgd = ax.legend(loc='center left', bbox_to_anchor=(1, 0.5),
+                            frameon=False, prop={'size': self.LEGEND_SIZE})
+        elif 'down' in legend_loc:
+            lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15),
+                            frameon=False, prop={'size': self.LEGEND_SIZE})
+        ax.set_title(r'Pair Distribution Function')
+
+        # +++++++++++++++++++++ SAVE AND/OR DISPLAY +++++++++++++++++++++ #
+        if not filename:
+            filename = 'pair_distribution.png'
+        if save:
+            if directory:
+                if not os.path.exists(directory):
+                    os.mkdir(directory)
+                fig_path = os.path.join(directory, filename)
+            else:
+                fig_path = filename
+            fig.savefig(fig_path, dpi=600, bbox_extra_artists=(lgd,), bbox_inches='tight')
+        if display:
+            ax.legend().draggable()
+            # plt.tight_layout()
+            fig.show(fig)
+
+    def plot_difference(self, difference,
+                        baseline_index=0, baseline_dat=None,
+                        dash_line_index=(None,),
+                        display=True, save=False, filename=None, legend_loc='left',
+                        directory=None):
         ###########   Relative Ratio  ####################
         self.PLOT_NUM += 1
 
-        # ++++++++++++ CALCULATE RELATIVE DIFFERENCE RATIO ++++++++++++++ #
-        self.calc_relative_diff(baseline_index=baseline_index, baseline_dat=baseline_dat)
+        # +++++++++++++++++++ CALCULATE DIFFERENCE ++++++++++++++++++++++ #
+        diff_mode = str(difference).lower() + '_diff'
+        try:
+            eval('self.calc_{0}(baseline_index=baseline_index, baseline_dat=baseline_dat)'.format(
+                diff_mode))
+        except NameError:
+            raise ValueError('Error: unsupport mode of difference analysis. Please check again.')
 
         # ++++++++++++++++++++++++++++++ PLOT +++++++++++++++++++++++++++ #
         self.update_linestyle(dash_line_index=dash_line_index)
         fig = plt.figure(self.PLOT_NUM)
         ax = plt.subplot(111)
         for i, data_dict in enumerate(self.data_dict_list):
-            plt.plot(data_dict['q'], data_dict['relative_diff'],
-                     label=data_dict['label'],
-                     linestyle=data_dict['linestyle'], linewidth=1)
+            ax.plot(data_dict['q'], data_dict[diff_mode],
+                    label=data_dict['label'],
+                    linestyle=data_dict['linestyle'], linewidth=1)
         ylim = ax.get_ylim()
         if ylim[0] >= -2.0:
             lower_lim = -5.0
@@ -325,24 +538,22 @@ class DifferenceAnalysis(object):
             upper_lim = 5.0
         else:
             upper_lim = ylim[1]
-        plt.ylim([lower_lim, upper_lim])
-        plt.xlabel(r'Scattering Vector, $q$ ($\AA^{-1}$)', fontdict=self.PLOT_LABEL)
-        plt.ylabel(r'Relative Ratio (%)', fontdict=self.PLOT_LABEL)
+        ax.set_ylim([lower_lim, upper_lim])
+        ax.set_xlabel(r'Scattering Vector, $q$ ($\mathrm{\AA^{-1}}$)', fontdict=self.PLOT_LABEL)
+        ax.set_ylabel(self.YLABEL[diff_mode], fontdict=self.PLOT_LABEL)
         box = ax.get_position()
         ax.set_position([box.x0, box.y0, box.width * 1.1, box.height])
         if 'left' in legend_loc:
             lgd = ax.legend(loc='center left', bbox_to_anchor=(1, 0.5),
-                            frameon=False, prop={'size':self.LEGEND_SIZE})
+                            frameon=False, prop={'size': self.LEGEND_SIZE})
         elif 'down' in legend_loc:
             lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15),
-                            frameon=False, prop={'size':self.LEGEND_SIZE})
-        plt.title(r'Relative Difference Ratio Analysis')
+                            frameon=False, prop={'size': self.LEGEND_SIZE})
+        ax.set_title(r'{0} Difference Analysis'.format(difference.lower().capitalize()))
 
         # +++++++++++++++++++++ SAVE AND/OR DISPLAY +++++++++++++++++++++ #
-        if filename:
-            pass
-        else:
-            filename = 'relative_ratio.png'
+        if not filename:
+            filename = '{0}.png'.format(diff_mode)
         if save:
             if directory:
                 if not os.path.exists(directory):
@@ -350,66 +561,8 @@ class DifferenceAnalysis(object):
                 fig_path = os.path.join(directory, filename)
             else:
                 fig_path = filename
-            plt.savefig(fig_path, dpi=600, bbox_extra_artists=(lgd,), bbox_inches='tight')
+            fig.savefig(fig_path, dpi=600, bbox_extra_artists=(lgd,), bbox_inches='tight')
         if display:
             ax.legend().draggable()
             # plt.tight_layout()
-            plt.show(fig)
-
-    def plot_absolute_diff(self, baseline_index=0, baseline_dat=None,
-                           dash_line_index=(None,),
-                           display=True, save=False, filename=None, legend_loc='left',
-                           directory=None):
-        ###########   ABSOLUTE Ratio  ####################
-        self.PLOT_NUM += 1
-
-        # ++++++++++++ CALCULATE ABSOLUTE DIFFERENCE RATIO ++++++++++++++ #
-        self.calc_absolute_diff(baseline_index=baseline_index, baseline_dat=baseline_dat)
-
-        # ++++++++++++++++++++++++++++++ PLOT +++++++++++++++++++++++++++ #
-        self.update_linestyle(dash_line_index=dash_line_index)
-        fig = plt.figure(self.PLOT_NUM)
-        ax = plt.subplot(111)
-        for i, data_dict in enumerate(self.data_dict_list):
-            plt.plot(data_dict['q'], data_dict['absolute_diff'],
-                     label=data_dict['label'],
-                     linestyle=data_dict['linestyle'], linewidth=1)
-        ylim = ax.get_ylim()
-        if ylim[0] >= -2.0:
-            lower_lim = -5.0
-        else:
-            lower_lim = ylim[0]
-        if ylim[1] <= 2.0:
-            upper_lim = 5.0
-        else:
-            upper_lim = ylim[1]
-        plt.ylim([lower_lim, upper_lim])
-        plt.xlabel(r'Scattering Vector, $q$ ($\AA^{-1}$)', fontdict=self.PLOT_LABEL)
-        plt.ylabel(r'Absolute Difference (arb. units.)', fontdict=self.PLOT_LABEL)
-        box = ax.get_position()
-        ax.set_position([box.x0, box.y0, box.width * 1.1, box.height])
-        if 'left' in legend_loc:
-            lgd = ax.legend(loc='center left', bbox_to_anchor=(1, 0.5),
-                            frameon=False, prop={'size':self.LEGEND_SIZE})
-        elif 'down' in legend_loc:
-            lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15),
-                            frameon=False, prop={'size':self.LEGEND_SIZE})
-        plt.title(r'Absolute Difference Analysis')
-
-        # +++++++++++++++++++++ SAVE AND/OR DISPLAY +++++++++++++++++++++ #
-        if filename:
-            pass
-        else:
-            filename = 'absolute_diff.png'
-        if save:
-            if directory:
-                if not os.path.exists(directory):
-                    os.mkdir(directory)
-                fig_path = os.path.join(directory, filename)
-            else:
-                fig_path = filename
-            plt.savefig(fig_path, dpi=600, bbox_extra_artists=(lgd,), bbox_inches='tight')
-        if display:
-            ax.legend().draggable()
-            # plt.tight_layout()
-            plt.show(fig)
+            fig.show(fig)

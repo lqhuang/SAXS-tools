@@ -1,1 +1,1 @@
-__all__ = ['dat', 'tiff']
+__all__ = ['dat', 'tiff', 'gnom']
