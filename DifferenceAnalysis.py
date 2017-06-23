@@ -115,7 +115,6 @@ class DifferenceAnalysis(object):
         self.file_list = file_list
         self.num_curves = len(data_dict_list)
         self.data_dict_list = data_dict_list
-        self.keys = data_dict_list[0].keys()
         if buffer_dict:
             self.buffer_dict = buffer_dict
         self.crop = crop
@@ -214,6 +213,9 @@ class DifferenceAnalysis(object):
     # ----------------------------------------------------------------------- #
     #                         INSTANCE METHODS                                #
     # ----------------------------------------------------------------------- #
+    def data_dict_keys(self):
+        return self.data_dict_list[0].keys()
+
     def update_linestyle(self, dash_line_index=(None,)):
         """
         index starts from 1
@@ -221,12 +223,10 @@ class DifferenceAnalysis(object):
         for i, data_dict in enumerate(self.data_dict_list):
             if i+1 in dash_line_index:
                 data_dict['linestyle'] = '--'
-        self.keys = self.data_dict_list[0].keys()
 
     def calc_log_intensity(self):
         for data_dict in self.data_dict_list:
             data_dict['log_I'] = np.log10(data_dict['I'])
-        self.keys = self.data_dict_list[0].keys()
 
     def calc_relative_diff(self, baseline_index=1, baseline_dat=None):
         if not baseline_dat:
@@ -237,7 +237,6 @@ class DifferenceAnalysis(object):
         for data_dict in self.data_dict_list:
             data_dict['relative_diff'] = (data_dict['I'] - baseline_dict['I']) / baseline_dict['I']
             data_dict['relative_diff'] *= 100
-        self.keys = self.data_dict_list[0].keys()
 
     def calc_absolute_diff(self, baseline_index=1, baseline_dat=None):
         if not baseline_dat:
@@ -247,7 +246,6 @@ class DifferenceAnalysis(object):
                                           crop_qmin=self.crop_qmin, crop_qmax=self.crop_qmax)
         for data_dict in self.data_dict_list:
             data_dict['absolute_diff'] = data_dict['I'] - baseline_dict['I']
-        self.keys = self.data_dict_list[0].keys()
 
     def calc_radius_of_gyration(self, options=''):
         """
@@ -272,7 +270,6 @@ class DifferenceAnalysis(object):
             data_dict['Rg'] = dict()
             for j, key in enumerate(rg_keys, 0):
                 data_dict['Rg'][key] = rg_data[j]
-        self.keys = self.data_dict_list[0].keys()
 
     def calc_pair_distribution(self, output_dir='.', options=''):
         """
@@ -284,7 +281,7 @@ class DifferenceAnalysis(object):
         https://www.embl-hamburg.de/biosaxs/manuals/datgnom.html
         https://www.embl-hamburg.de/biosaxs/manuals/gnom.html
         """
-        if 'Rg' not in self.keys:
+        if 'Rg' not in self.data_dict_keys():
             self.calc_radius_of_gyration()
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
@@ -300,7 +297,6 @@ class DifferenceAnalysis(object):
             )
             log = run_system_command(datgnom)
             data_dict['pair_distribution'] = gnom.parse_gnom_file(output_name)
-        self.keys = self.data_dict_list[0].keys()
 
     def calc_guinier(self):
         """
@@ -312,7 +308,6 @@ class DifferenceAnalysis(object):
             data_dict['guinier'] = dict()
             data_dict['guinier']['x'] = data_dict['q'] ** 2
             data_dict['guinier']['y'] = np.log2(data_dict['I']) # in ln scale
-        self.keys = self.data_dict_list[0].keys()
 
     def calc_kratky(self):
         """
@@ -324,7 +319,6 @@ class DifferenceAnalysis(object):
             data_dict['kratky'] = dict()
             data_dict['kratky']['x'] = data_dict['q']
             data_dict['kratky']['y'] = data_dict['I'] * data_dict['q'] ** 2
-        self.keys = self.data_dict_list[0].keys()
 
     def calc_porod(self):
         """
@@ -336,7 +330,6 @@ class DifferenceAnalysis(object):
             data_dict['porod'] = dict()
             data_dict['porod']['x'] = data_dict['q'] ** 4
             data_dict['porod']['y'] = data_dict['I'] * data_dict['porod']['x']
-        self.keys = self.data_dict_list[0].keys()
 
     # ----------------------- PLOT ------------------------#
     def plot_profiles(self, log_intensity=True,
@@ -351,7 +344,7 @@ class DifferenceAnalysis(object):
         # +++++++++++++++++++ CALCULATE INTENSITY +++++++++++++++++++++++ #
         intensity_key = 'I'
         if log_intensity:
-            if 'log_I' not in self.keys:
+            if 'log_I' not in self.data_dict_keys():
                 self.calc_log_intensity()
             intensity_key = 'log_I'
 
@@ -408,7 +401,7 @@ class DifferenceAnalysis(object):
 
         # +++++++++++++++++++++ CALCULATE ANALYSIS ++++++++++++++++++++++ #
         analysis = str(analysis).lower()
-        if analysis not in self.keys:
+        if analysis not in self.data_dict_keys():
             try:
                 eval('self.calc_{0}()'.format(analysis))
             except NameError:
@@ -460,7 +453,7 @@ class DifferenceAnalysis(object):
         self.PLOT_NUM += 1
 
         # +++++++++++++++++++++ CALCULATE PDF +++++++++++++++++++++++++++ #
-        if 'pair_distribution' not in self.keys:
+        if 'pair_distribution' not in self.data_dict_keys():
             self.calc_pair_distribution(output_dir=output_dir)
         print(self.data_dict_list[0]['Rg'].items())
         print(self.data_dict_list[0]['Rg']['Rg'])
