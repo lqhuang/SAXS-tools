@@ -1,6 +1,5 @@
 import os
 import glob
-import csv
 
 import numpy as np
 from matplotlib import pyplot as plt
@@ -55,7 +54,8 @@ def subtract_data_dict(data_dict_list, buffer_dict, smooth=False,
                 dat.scale_curve((data_dict['q'], data_dict['I']),
                                 (ref_q, ref_I), qmin=scale_qmin, qmax=scale_qmax,
                                 inc_factor=True)
-            print('For {0} file, the scaling factor is {1}'.format(data_dict['filename'], data_dict['scaling_factor']))
+            print('For {0} file, the scaling factor is {1}'.format(
+                data_dict['filename'], data_dict['scaling_factor']))
         data_dict['I'] -= buffer_dict['I']
         if smooth:
             data_dict['I'] = dat.smooth_curve(data_dict['I'])
@@ -101,8 +101,8 @@ class DifferenceAnalysis(object):
     XLABEL['porod'] = r'$q^4$ ($\mathrm{\AA^{-4}}$)'
     YLABEL = dict()
     YLABEL['guinier'] = r'$\mathrm{ln}(I(q))$'
-    YLABEL['kratky'] = r'$I(q) \times q^2$'
-    YLABEL['porod'] = r'$I(q) \times q^4$'
+    YLABEL['kratky'] = r'$I(q) \cdot q^2$'
+    YLABEL['porod'] = r'$I(q) \cdot q^4$'
     YLABEL['relative_diff'] = r'Relative Ratio (%)'
     YLABEL['absolute_diff'] = r'Absolute Difference (arb. units.)'
 
@@ -143,12 +143,12 @@ class DifferenceAnalysis(object):
         # glob files
         file_list = glob.glob(average_dat_location)
         if len(file_list) == 0:
-            raise FileNotFoundError('Do not find dat files')
+            raise FileNotFoundError('Do not find dat files.')
         average_dat_list = [fname for fname in file_list \
                             if fname.split(os.path.sep)[-1].lower().startswith('a') \
                                and 'buffer' not in fname.split(os.path.sep)[-1].lower()]
         if len(average_dat_list) == 0:
-            raise FileNotFoundError('Do not find any average dats')
+            raise FileNotFoundError('Do not find any average dats.')
         # read buffer
         buffer_dict = dict()
         if buffer_dat:
@@ -157,8 +157,8 @@ class DifferenceAnalysis(object):
             buffer_dat = [fname for fname in file_list if 'buffer' in fname.lower()]
             try:
                 print('Use buffer file:', buffer_dat[0])
-            except IndexError as error:
-                raise FileNotFoundError('Please check whether exist a buffer dat file')
+            except IndexError:
+                raise FileNotFoundError('Please check whether exist a buffer dat file.')
             buffer_dict = get_data_dict(buffer_dat[0], crop=crop,
                                         crop_qmin=crop_qmin, crop_qmax=crop_qmax)
         # subtracting
@@ -191,7 +191,7 @@ class DifferenceAnalysis(object):
                               for dat_file in subtracted_dat_list]
             cls = DifferenceAnalysis(data_dict_list, file_list=subtracted_dat_list)
         elif from_average and len(subtracted_dat_list) == 0:
-            print('Warning: Do not find any subtracted curves, try to read data from average curves')
+            print('Warning: Do not find any subtracted curves, try to read data from average curves.')
             cls = DifferenceAnalysis.from_average_dats(subtracted_dat_location, smooth=smooth,
                                                        crop=crop, crop_qmin=crop_qmin, crop_qmax=crop_qmax)
         elif not from_average and len(subtracted_dat_list) == 0:
@@ -264,12 +264,15 @@ class DifferenceAnalysis(object):
         log = run_system_command(autorg).splitlines()
         assert self.num_curves == len(log) - 1
         rg_keys = log[0].split(',')
-        # skip 'File' information
-        for i, data_dict in enumerate(self.data_dict_list):
-            rg_data = log[i+1].split(',')
+        # undone: skip 'File' information
+        for i, data_dict in enumerate(self.data_dict_list, 1):
+            rg_data = log[i].split(',')
             data_dict['Rg'] = dict()
-            for j, key in enumerate(rg_keys, 0):
-                data_dict['Rg'][key] = rg_data[j]
+            for j, key in enumerate(rg_keys):
+                try:
+                    data_dict['Rg'][key] = float(rg_data[j])
+                except ValueError:
+                    data_dict['Rg'][key] = rg_data[j]
 
     def calc_pair_distribution(self, output_dir='.', options=''):
         """
@@ -293,8 +296,7 @@ class DifferenceAnalysis(object):
                 print('Warning: {0} file do not end with .dat format'.format(data_dict['filename']))
                 output_name = os.path.join(output_dir, data_dict['filename']+'.out')
             datgnom = 'datgnom4 {0} --rg {1} --output {2} {3}'.format(
-                data_dict['filepath'], rg, output_name, options
-            )
+                data_dict['filepath'], rg, output_name, options)
             log = run_system_command(datgnom)
             data_dict['pair_distribution'] = gnom.parse_gnom_file(output_name)
 
@@ -388,7 +390,7 @@ class DifferenceAnalysis(object):
         if display:
             ax.legend().draggable()
             # plt.tight_layout()
-            fig.show(fig)
+            fig.show()
 
     def plot_analysis(self, analysis,
                       dash_line_index=(None,),
@@ -455,7 +457,6 @@ class DifferenceAnalysis(object):
         # +++++++++++++++++++++ CALCULATE PDF +++++++++++++++++++++++++++ #
         if 'pair_distribution' not in self.data_dict_keys():
             self.calc_pair_distribution(output_dir=output_dir)
-        print(self.data_dict_list[0]['Rg'].items())
         print(self.data_dict_list[0]['Rg']['Rg'])
         print(self.data_dict_list[0]['pair_distribution']['reciprocal_rg'])
         print(self.data_dict_list[0]['pair_distribution']['real_rg'])
@@ -496,21 +497,23 @@ class DifferenceAnalysis(object):
         if display:
             ax.legend().draggable()
             # plt.tight_layout()
-            fig.show(fig)
+            fig.show()
 
     def plot_difference(self, difference,
                         baseline_index=0, baseline_dat=None,
                         dash_line_index=(None,),
                         display=True, save=False, filename=None, legend_loc='left',
                         directory=None):
-        ###########   Relative Ratio  ####################
+        """
+        Sequence Difference Analysis
+        """
         self.PLOT_NUM += 1
 
         # +++++++++++++++++++ CALCULATE DIFFERENCE ++++++++++++++++++++++ #
         diff_mode = str(difference).lower() + '_diff'
         try:
-            eval('self.calc_{0}(baseline_index=baseline_index, baseline_dat=baseline_dat)'.format(
-                diff_mode))
+            eval('self.calc_{0}(baseline_index={1}, baseline_dat={2})'.format(
+                diff_mode, baseline_index, baseline_dat))
         except NameError:
             raise ValueError('Error: unsupport mode of difference analysis. Please check again.')
 
@@ -558,4 +561,55 @@ class DifferenceAnalysis(object):
         if display:
             ax.legend().draggable()
             # plt.tight_layout()
-            fig.show(fig)
+            fig.show()
+
+    def plot_guinier_fitting(self,
+                             display=True, save=False, filename=None,
+                             directory=None):
+        """
+        Guinier fitting
+        """
+
+        # ++++++++++++++ CALCULATE GUINIER FITTING ++++++++++++++++++++++ #
+        if 'guinier' not in self.data_dict_keys():
+            self.calc_guinier()
+        if 'Rg' not in self.data_dict_keys():
+            self.calc_radius_of_gyration()
+
+        # ++++++++++++++++++++++++++++++ PLOT +++++++++++++++++++++++++++ #
+        for i, data_dict in enumerate(self.data_dict_list):
+            self.PLOT_NUM += 1
+            fig = plt.figure(self.PLOT_NUM)
+            ax = plt.subplot(111)
+            # Rg,Rg StDev,I(0),I(0) StDev,First point,Last point,Quality,Aggregated,
+            rg_slice = slice(int(data_dict['Rg']['First point']), int(data_dict['Rg']['Last point']))
+            ax.plot(data_dict['guinier']['x'][rg_slice], data_dict['guinier']['y'][rg_slice],
+                    label=data_dict['label'], linewidth=1)
+            # fitting curve: ln(I(q)) = ln(I0) - Rg^2 / 3 * q^2
+            fitting_curve = np.log2(data_dict['Rg']['I(0)']) \
+                            - data_dict['Rg']['Rg'] ** 2 / 3 * data_dict['guinier']['x'][rg_slice]
+            ax.plot(data_dict['guinier']['x'][rg_slice], fitting_curve,
+                    label='Fitting', linewidth=1)
+            ax.set_xlabel(self.XLABEL['guinier'], fontdict=self.PLOT_LABEL)
+            ax.set_ylabel(self.YLABEL['guinier'], fontdict=self.PLOT_LABEL)
+            box = ax.get_position()
+            ax.set_position([box.x0, box.y0, box.width * 1.1, box.height])
+            lgd = ax.legend(loc=0, frameon=False, prop={'size': self.LEGEND_SIZE})
+            ax.set_title(r'Guinier Fitting (Quality={0:.2f}%, Aggregated={1:.2f}%)'.format(
+                data_dict['Rg']['Quality'] * 100, data_dict['Rg']['Aggregated'] * 100))
+
+            # +++++++++++++++++++++ SAVE AND/OR DISPLAY +++++++++++++++++++++ #
+            # if not filename:
+            filename = 'guinier_fitting_{0}.png'.format(data_dict['label'].replace(' ', '_'))
+            if save:
+                if directory:
+                    if not os.path.exists(directory):
+                        os.mkdir(directory)
+                    fig_path = os.path.join(directory, filename)
+                else:
+                    fig_path = filename
+                fig.savefig(fig_path, dpi=600, bbox_extra_artists=(lgd,), bbox_inches='tight')
+
+        if display:
+            # plt.tight_layout()
+            plt.show()

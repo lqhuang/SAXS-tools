@@ -55,6 +55,8 @@ def plot_DifferenceAnalysis(root_directory, from_average=False, log_intensity=Tr
                             filename=EXP_prefix+'_absolute_diff.'+fig_format,
                             baseline_index=baseline_index,
                             **kwargs)
+    seq_obj.plot_guinier_fitting(display=False, save=True,
+                                 directory=os.path.join(figures_directory, 'guinier_fitting'))
     close('all')
 
 
@@ -80,7 +82,7 @@ def main():
     parser.add_argument('--crop', help='Whether to crop curves (default=True)', type=str2bool, default=True)
     parser.add_argument('--crop_qmin', help='min q for cropping', type=float, default=0.0)
     parser.add_argument('--crop_qmax', help='max q for cropping', type=float, default=-1.0)
-    parser.add_argument('--dash_line_index', help='Index for dash line in figures starts from 1, eg: 1,2,3. (default=None)',
+    parser.add_argument('--dash_line_index', help='Index for dash line starts from 1, eg: 1,2,3. (default=None)',
                         type=str, default=None)
 
     # parse arguments
