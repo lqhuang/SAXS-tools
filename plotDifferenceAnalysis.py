@@ -1,7 +1,7 @@
 import os.path
 import argparse
 
-from matplotlib.pyplot import close
+from matplotlib import pyplot as plt
 
 from DifferenceAnalysis import DifferenceAnalysis
 from utils import print_arguments, str2bool
@@ -32,21 +32,37 @@ def plot_DifferenceAnalysis(root_directory, from_average=False, log_intensity=Tr
     EXP_prefix = os.path.basename(root_directory)
     kwargs = {'display': display, 'save': save_figures, 'directory': figures_directory,
               'legend_loc': legend_loc, 'dash_line_index': dash_line_index}
-    seq_obj.plot_pair_distribution(output_dir=os.path.join(root_directory, 'Gnom_output'),
-                                   filename=EXP_prefix+'_pair_distribution.'+fig_format,
-                                   **kwargs)
-    seq_obj.plot_profiles(log_intensity=log_intensity,
-                          filename=EXP_prefix+'_saxs_profiles.'+fig_format,
-                          **kwargs)
-    seq_obj.plot_analysis('guinier',
-                          filename=EXP_prefix+'_saxs_guinier_analysis.'+fig_format,
-                          **kwargs)
-    seq_obj.plot_analysis('kratky',
-                          filename=EXP_prefix+'_saxs_kratky_analysis.'+fig_format,
-                          **kwargs)
-    seq_obj.plot_analysis('porod',
-                          filename=EXP_prefix+'_saxs_porod_analysis.'+fig_format,
-                          **kwargs)
+
+    # general
+    fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(8, 5))
+    seq_obj.plot_profiles(log_intensity=log_intensity, axes=axes[0, 0], **kwargs)
+    seq_obj.plot_analysis('guinier', axes=axes[0, 1], **kwargs)
+    seq_obj.plot_analysis('kratky', axes=axes[1, 0], **kwargs)
+    seq_obj.plot_analysis('porod', axes=axes[1, 1], **kwargs)
+    if not os.path.exists(figures_directory):
+        os.makedirs(figures_directory)
+    fig_path = os.path.join(figures_directory, EXP_prefix+'_saxs_general_analysis.'+fig_format)
+    lgd = fig.legend(axes[0, 0].get_lines(), seq_obj.data_dict_label(),
+                     loc='center left', bbox_to_anchor=(0.95, 0.5), frameon=False)
+    # fig.subplots_adjust()
+    fig.tight_layout()
+    fig.savefig(fig_path, dpi=seq_obj.DPI, bbox_extra_artists=(lgd,), bbox_inches='tight')
+    if display:
+        plt.show()
+
+    # single analysis
+    # seq_obj.plot_profiles(log_intensity=log_intensity,
+    #                       filename=EXP_prefix+'_saxs_profiles.'+fig_format,
+    #                       **kwargs)
+    # seq_obj.plot_analysis('guinier',
+    #                       filename=EXP_prefix+'_saxs_guinier_analysis.'+fig_format,
+    #                       **kwargs)
+    # seq_obj.plot_analysis('kratky',
+    #                       filename=EXP_prefix+'_saxs_kratky_analysis.'+fig_format,
+    #                       **kwargs)
+    # seq_obj.plot_analysis('porod',
+    #                       filename=EXP_prefix+'_saxs_porod_analysis.'+fig_format,
+    #                       **kwargs)
     seq_obj.plot_difference('relative',
                             filename=EXP_prefix+'_relative_ratio.'+fig_format,
                             baseline_index=baseline_index,
@@ -55,9 +71,22 @@ def plot_DifferenceAnalysis(root_directory, from_average=False, log_intensity=Tr
                             filename=EXP_prefix+'_absolute_diff.'+fig_format,
                             baseline_index=baseline_index,
                             **kwargs)
-    seq_obj.plot_guinier_fitting(display=False, save=True,
-                                 directory=os.path.join(figures_directory, 'guinier_fitting'))
-    close('all')
+    plt.close('all')
+    try:
+        seq_obj.plot_pair_distribution(output_dir=os.path.join(root_directory, 'Gnom_output'),
+                                       filename=EXP_prefix+'_pair_distribution.'+fig_format,
+                                       **kwargs)
+    except Exception as error:
+        print(error.__doc__)
+    finally:
+        plt.close('all')
+    try:
+        seq_obj.plot_guinier_fitting(display=display, save=True,
+                                     directory=os.path.join(figures_directory, 'guinier_fitting'))
+    except Exception as error:
+        print(error.__doc__)
+    finally:
+        plt.close('all')
 
 
 def main():

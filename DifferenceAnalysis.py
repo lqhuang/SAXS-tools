@@ -71,7 +71,7 @@ class DifferenceAnalysis(object):
     #                         CLASS VARIABLES                                 #
     # ----------------------------------------------------------------------- #
     # print(plt.style.available)
-    plt.style.use('classic')
+    # plt.style.use('classic')
     # plt.style.use('seaborn-bright')
     # plt.style.use('seaborn')
     # plt.style.use('seaborn-notebook')
@@ -85,20 +85,29 @@ class DifferenceAnalysis(object):
 
     plt.rcParams['mathtext.fontset'] = 'cm'
     plt.rcParams['mathtext.rm'] = 'serif'
-    plt.rcParams['xtick.direction'] = 'in'
-    plt.rcParams['ytick.direction'] = 'in'
+    # plt.rcParams['xtick.direction'] = 'in'
+    # plt.rcParams['ytick.direction'] = 'in'
     PLOT_LABEL = {'family': 'sans-serif',
                   'weight': 'normal',
                   'size': 14}
     plt.rc('font', **PLOT_LABEL)
     plt.rc('text', **{'latex.unicode': True})
+
+    # plt.rcParams['axes.autolimit_mode'] = 'round_numbers'
+    # plt.rcParams['axes.xmargin'] = 0
+    # plt.rcParams['axes.ymargin'] = 0
+
+    from cycler import cycler
+    plt.rcParams['axes.prop_cycle'] = cycler(color='bgrcmyk')
+
     LEGEND_SIZE = 12
+    DPI = 300
     PLOT_NUM = 0
 
     XLABEL = dict()
-    XLABEL['guinier'] = r'$q^2$ ($\mathrm{\AA^{-2}}$)'
-    XLABEL['kratky'] = r'Scattering Vector, $q$ ($\mathrm{\AA^{-1}}$)'
-    XLABEL['porod'] = r'$q^4$ ($\mathrm{\AA^{-4}}$)'
+    XLABEL['guinier'] = r'$q^2$ $(\mathrm{\AA^{-2}})$'
+    XLABEL['kratky'] = r'Scattering Vector, $q$ $(\mathrm{\AA^{-1}})$'
+    XLABEL['porod'] = r'$q^4$ $(\mathrm{\AA^{-4}})$'
     YLABEL = dict()
     YLABEL['guinier'] = r'$\mathrm{ln}(I(q))$'
     YLABEL['kratky'] = r'$I(q) \cdot q^2$'
@@ -120,6 +129,9 @@ class DifferenceAnalysis(object):
         self.crop = crop
         self.crop_qmin = crop_qmin
         self.crop_qmax = crop_qmax
+
+    def __del__(self):
+        plt.close('all')
 
     # ----------------------------------------------------------------------- #
     #                          CLASS METHODS                                  #
@@ -215,6 +227,9 @@ class DifferenceAnalysis(object):
     # ----------------------------------------------------------------------- #
     def data_dict_keys(self):
         return self.data_dict_list[0].keys()
+
+    def data_dict_label(self):
+        return [data_dict['label'] for data_dict in self.data_dict_list]
 
     def update_linestyle(self, dash_line_index=(None,)):
         """
@@ -334,10 +349,9 @@ class DifferenceAnalysis(object):
             data_dict['porod']['y'] = data_dict['I'] * data_dict['porod']['x']
 
     # ----------------------- PLOT ------------------------#
-    def plot_profiles(self, log_intensity=True,
-                      dash_line_index=(None,),
-                      display=True, save=False, filename=None, legend_loc='left',
-                      directory=None):
+    def plot_profiles(self, log_intensity=True, dash_line_index=(None,),
+                      display=True, save=False, filename=None, legend_loc='left', directory=None,
+                      axes=None):
         """
         SAXS Profiles
         """
@@ -352,50 +366,58 @@ class DifferenceAnalysis(object):
 
         # ++++++++++++++++++++++++++++++ PLOT +++++++++++++++++++++++++++ #
         self.update_linestyle(dash_line_index=dash_line_index)
-        fig = plt.figure(self.PLOT_NUM)
-        ax = plt.subplot(111)
-        for i, data_dict in enumerate(self.data_dict_list):
+        if axes:
+            ax = axes
+        else:
+            fig = plt.figure(self.PLOT_NUM)
+            ax = plt.subplot(111)
+        for data_dict in self.data_dict_list:
             ax.plot(data_dict['q'], data_dict[intensity_key],
                     label=data_dict['label'],
                     linestyle=data_dict['linestyle'], linewidth=1)
-        ax.set_xlabel(r'Scattering Vector, $q$ ($\mathrm{\AA^{-1}}$)', fontdict=self.PLOT_LABEL)
+        if not log_intensity:
+            zeros_x = self.data_dict_list[0]['q']
+            zeros_y = np.zeros_like(zeros_x)
+            ax.plot(zeros_x, zeros_y, '--r')
+        ax.set_xlabel(r'Scattering Vector, $q$ $(\mathrm{\AA^{-1}})$', fontdict=self.PLOT_LABEL)
         if log_intensity:
-            ax.set_ylabel(r'log(I) (arb. units.)', fontdict=self.PLOT_LABEL)
+            ax.set_ylabel(r'$\log(I)$ (arb. units.)', fontdict=self.PLOT_LABEL)
         else:
             ax.set_ylabel(r'Intensity (arb. units.)', fontdict=self.PLOT_LABEL)
-        box = ax.get_position()
-        ax.set_position([box.x0, box.y0, box.width * 1.1, box.height])
-        if not log_intensity:
-            lgd = ax.legend(loc=0, frameon=False, prop={'size': self.LEGEND_SIZE})
-        else:
-            if 'left' in legend_loc:
-                lgd = ax.legend(loc='center left', bbox_to_anchor=(1, 0.5),
-                                frameon=False, prop={'size': self.LEGEND_SIZE})
-            elif 'down' in legend_loc:
-                lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15),
-                                frameon=False, prop={'size': self.LEGEND_SIZE})
         ax.set_title(r'SAXS Subtracted Profiles')
+        if not axes:
+            box = ax.get_position()
+            ax.set_position([box.x0, box.y0, box.width * 1.1, box.height])
+            if not log_intensity:
+                lgd = ax.legend(loc=0, frameon=False, prop={'size': self.LEGEND_SIZE})
+            else:
+                if 'left' in legend_loc:
+                    lgd = ax.legend(loc='center left', bbox_to_anchor=(1, 0.5),
+                                    frameon=False, prop={'size': self.LEGEND_SIZE})
+                elif 'down' in legend_loc:
+                    lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15),
+                                    frameon=False, prop={'size': self.LEGEND_SIZE})
 
         # +++++++++++++++++++++ SAVE AND/OR DISPLAY +++++++++++++++++++++ #
         if not filename:
             filename = 'saxs_profiles.png'
-        if save:
-            if directory:
-                if not os.path.exists(directory):
-                    os.mkdir(directory)
-                fig_path = os.path.join(directory, filename)
-            else:
-                fig_path = filename
-            fig.savefig(fig_path, dpi=600, bbox_extra_artists=(lgd,), bbox_inches='tight')
-        if display:
-            ax.legend().draggable()
-            # plt.tight_layout()
-            fig.show()
+        if not axes:
+            if save:
+                if directory:
+                    if not os.path.exists(directory):
+                        os.mkdir(directory)
+                    fig_path = os.path.join(directory, filename)
+                else:
+                    fig_path = filename
+                fig.savefig(fig_path, dpi=self.DPI, bbox_extra_artists=(lgd,), bbox_inches='tight')
+            if display:
+                # ax.legend().draggable()
+                # fig.tight_layout()
+                plt.show()
 
-    def plot_analysis(self, analysis,
-                      dash_line_index=(None,),
-                      display=True, save=False, filename=None, legend_loc='left',
-                      directory=None):
+    def plot_analysis(self, analysis, dash_line_index=(None,),
+                      display=True, save=False, filename=None, legend_loc='left', directory=None,
+                      axes=None):
         """
         SAXS Analysis (guinier, kratky, porod)
         """
@@ -411,44 +433,48 @@ class DifferenceAnalysis(object):
 
         # ++++++++++++++++++++++++++++++ PLOT +++++++++++++++++++++++++++ #
         self.update_linestyle(dash_line_index=dash_line_index)
-        fig = plt.figure(self.PLOT_NUM)
-        ax = plt.subplot(111)
+        if axes:
+            ax = axes
+        else:
+            fig = plt.figure(self.PLOT_NUM)
+            ax = plt.subplot(111)
         for data_dict in self.data_dict_list:
             ax.plot(data_dict[analysis]['x'], data_dict[analysis]['y'],
                     label=data_dict['label'],
                     linestyle=data_dict['linestyle'], linewidth=1)
         ax.set_xlabel(self.XLABEL[analysis], fontdict=self.PLOT_LABEL)
         ax.set_ylabel(self.YLABEL[analysis], fontdict=self.PLOT_LABEL)
-        box = ax.get_position()
-        ax.set_position([box.x0, box.y0, box.width * 1.1, box.height])
-        if 'left' in legend_loc:
-            lgd = ax.legend(loc='center left', bbox_to_anchor=(1, 0.5),
-                            frameon=False, prop={'size': self.LEGEND_SIZE})
-        elif 'down' in legend_loc:
-            lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15),
-                            frameon=False, prop={'size': self.LEGEND_SIZE})
         ax.set_title(r'SAXS {0} Analysis'.format(analysis.capitalize()))
+        if not axes:
+            box = ax.get_position()
+            ax.set_position([box.x0, box.y0, box.width * 1.1, box.height])
+            if 'left' in legend_loc:
+                lgd = ax.legend(loc='center left', bbox_to_anchor=(1, 0.5),
+                                frameon=False, prop={'size': self.LEGEND_SIZE})
+            elif 'down' in legend_loc:
+                lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15),
+                                frameon=False, prop={'size': self.LEGEND_SIZE})
 
         # +++++++++++++++++++++ SAVE AND/OR DISPLAY +++++++++++++++++++++ #
         if not filename:
             filename = 'saxs_{}_analysis.png'.format(analysis)
-        if save:
-            if directory:
-                if not os.path.exists(directory):
-                    os.mkdir(directory)
-                fig_path = os.path.join(directory, filename)
-            else:
-                fig_path = filename
-            fig.savefig(fig_path, dpi=600, bbox_extra_artists=(lgd,), bbox_inches='tight')
-        if display:
-            ax.legend().draggable()
-            # plt.tight_layout()
-            fig.show()
+        if not axes:
+            if save:
+                if directory:
+                    if not os.path.exists(directory):
+                        os.mkdir(directory)
+                    fig_path = os.path.join(directory, filename)
+                else:
+                    fig_path = filename
+                fig.savefig(fig_path, dpi=self.DPI, bbox_extra_artists=(lgd,), bbox_inches='tight')
+            if display:
+                # ax.legend().draggable()
+                # fig.tight_layout()
+                plt.show()
 
-    def plot_pair_distribution(self, output_dir='.',
-                               dash_line_index=(None,),
-                               display=True, save=False, filename=None, legend_loc='left',
-                               directory=None):
+    def plot_pair_distribution(self, output_dir='.', dash_line_index=(None,),
+                               display=True, save=False, filename=None, legend_loc='left', directory=None,
+                               axes=None):
         """
         Pair distribution function
         """
@@ -463,47 +489,52 @@ class DifferenceAnalysis(object):
 
         # ++++++++++++++++++++++++++++++ PLOT +++++++++++++++++++++++++++ #
         self.update_linestyle(dash_line_index=dash_line_index)
-        fig = plt.figure(self.PLOT_NUM)
-        ax = plt.subplot(111)
-        intensity_key = 'I'
-        for i, data_dict in enumerate(self.data_dict_list):
+        if axes:
+            ax = axes
+        else:
+            fig = plt.figure(self.PLOT_NUM)
+            ax = plt.subplot(111)
+        for data_dict in self.data_dict_list:
             ax.plot(data_dict['pair_distribution']['r'], data_dict['pair_distribution']['pr'],
                     label=r'{0} $D_{{max}}={1:.2f}$'.format(
                         data_dict['label'], data_dict['pair_distribution']['Dmax']),
                     linestyle=data_dict['linestyle'], linewidth=1)
-        ax.set_xlabel(r'$r$ ($\mathrm{\AA}$)', fontdict=self.PLOT_LABEL)
+        ax.set_xlabel(r'$r$ $(\mathrm{\AA})$', fontdict=self.PLOT_LABEL)
         ax.set_ylabel(r'$P(r)$', fontdict=self.PLOT_LABEL)
-        box = ax.get_position()
-        ax.set_position([box.x0, box.y0, box.width * 1.1, box.height])
-        if 'left' in legend_loc:
-            lgd = ax.legend(loc='center left', bbox_to_anchor=(1, 0.5),
-                            frameon=False, prop={'size': self.LEGEND_SIZE})
-        elif 'down' in legend_loc:
-            lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15),
-                            frameon=False, prop={'size': self.LEGEND_SIZE})
         ax.set_title(r'Pair Distribution Function')
+        ylim = ax.get_ylim()
+        ax.set_ylim([0, ylim[1]])
+        if not axes:
+            box = ax.get_position()
+            ax.set_position([box.x0, box.y0, box.width * 1.1, box.height])
+            if 'left' in legend_loc:
+                lgd = ax.legend(loc='center left', bbox_to_anchor=(1, 0.5),
+                                frameon=False, prop={'size': self.LEGEND_SIZE})
+            elif 'down' in legend_loc:
+                lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15),
+                                frameon=False, prop={'size': self.LEGEND_SIZE})
 
         # +++++++++++++++++++++ SAVE AND/OR DISPLAY +++++++++++++++++++++ #
         if not filename:
             filename = 'pair_distribution.png'
-        if save:
-            if directory:
-                if not os.path.exists(directory):
-                    os.mkdir(directory)
-                fig_path = os.path.join(directory, filename)
-            else:
-                fig_path = filename
-            fig.savefig(fig_path, dpi=600, bbox_extra_artists=(lgd,), bbox_inches='tight')
-        if display:
-            ax.legend().draggable()
-            # plt.tight_layout()
-            fig.show()
+        if not axes:
+            if save:
+                if directory:
+                    if not os.path.exists(directory):
+                        os.mkdir(directory)
+                    fig_path = os.path.join(directory, filename)
+                else:
+                    fig_path = filename
+                fig.savefig(fig_path, dpi=self.DPI, bbox_extra_artists=(lgd,), bbox_inches='tight')
+            if display:
+                # ax.legend().draggable()
+                # fig.tight_layout()
+                plt.show()
 
     def plot_difference(self, difference,
-                        baseline_index=0, baseline_dat=None,
-                        dash_line_index=(None,),
-                        display=True, save=False, filename=None, legend_loc='left',
-                        directory=None):
+                        baseline_index=0, baseline_dat=None, dash_line_index=(None,),
+                        display=True, save=False, filename=None, legend_loc='left', directory=None,
+                        axes=None):
         """
         Sequence Difference Analysis
         """
@@ -519,53 +550,57 @@ class DifferenceAnalysis(object):
 
         # ++++++++++++++++++++++++++++++ PLOT +++++++++++++++++++++++++++ #
         self.update_linestyle(dash_line_index=dash_line_index)
-        fig = plt.figure(self.PLOT_NUM)
-        ax = plt.subplot(111)
-        for i, data_dict in enumerate(self.data_dict_list):
+        if axes:
+            ax = axes
+        else:
+            fig = plt.figure(self.PLOT_NUM)
+            ax = plt.subplot(111)
+        for data_dict in self.data_dict_list:
             ax.plot(data_dict['q'], data_dict[diff_mode],
                     label=data_dict['label'],
                     linestyle=data_dict['linestyle'], linewidth=1)
         ylim = ax.get_ylim()
         if ylim[0] >= -2.0:
-            lower_lim = -5.0
+            lower_lim = -2.0
         else:
             lower_lim = ylim[0]
         if ylim[1] <= 2.0:
-            upper_lim = 5.0
+            upper_lim = 2.0
         else:
             upper_lim = ylim[1]
         ax.set_ylim([lower_lim, upper_lim])
-        ax.set_xlabel(r'Scattering Vector, $q$ ($\mathrm{\AA^{-1}}$)', fontdict=self.PLOT_LABEL)
+        ax.set_xlabel(r'Scattering Vector, $q$ $(\mathrm{\AA^{-1}})$', fontdict=self.PLOT_LABEL)
         ax.set_ylabel(self.YLABEL[diff_mode], fontdict=self.PLOT_LABEL)
-        box = ax.get_position()
-        ax.set_position([box.x0, box.y0, box.width * 1.1, box.height])
-        if 'left' in legend_loc:
-            lgd = ax.legend(loc='center left', bbox_to_anchor=(1, 0.5),
-                            frameon=False, prop={'size': self.LEGEND_SIZE})
-        elif 'down' in legend_loc:
-            lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15),
-                            frameon=False, prop={'size': self.LEGEND_SIZE})
         ax.set_title(r'{0} Difference Analysis'.format(difference.lower().capitalize()))
+        if not axes:
+            box = ax.get_position()
+            ax.set_position([box.x0, box.y0, box.width * 1.1, box.height])
+            if 'left' in legend_loc:
+                lgd = ax.legend(loc='center left', bbox_to_anchor=(1, 0.5),
+                                frameon=False, prop={'size': self.LEGEND_SIZE})
+            elif 'down' in legend_loc:
+                lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15),
+                                frameon=False, prop={'size': self.LEGEND_SIZE})
 
         # +++++++++++++++++++++ SAVE AND/OR DISPLAY +++++++++++++++++++++ #
         if not filename:
             filename = '{0}.png'.format(diff_mode)
-        if save:
-            if directory:
-                if not os.path.exists(directory):
-                    os.mkdir(directory)
-                fig_path = os.path.join(directory, filename)
-            else:
-                fig_path = filename
-            fig.savefig(fig_path, dpi=600, bbox_extra_artists=(lgd,), bbox_inches='tight')
-        if display:
-            ax.legend().draggable()
-            # plt.tight_layout()
-            fig.show()
+        if not axes:
+            if save:
+                if directory:
+                    if not os.path.exists(directory):
+                        os.mkdir(directory)
+                    fig_path = os.path.join(directory, filename)
+                else:
+                    fig_path = filename
+                fig.savefig(fig_path, dpi=self.DPI, bbox_extra_artists=(lgd,), bbox_inches='tight')
+            if display:
+                # ax.legend().draggable()
+                # fig.tight_layout()
+                plt.show()
 
     def plot_guinier_fitting(self,
-                             display=True, save=False, filename=None,
-                             directory=None):
+                             display=True, save=False, filename=None, directory=None):
         """
         Guinier fitting
         """
@@ -577,14 +612,15 @@ class DifferenceAnalysis(object):
             self.calc_radius_of_gyration()
 
         # ++++++++++++++++++++++++++++++ PLOT +++++++++++++++++++++++++++ #
-        for i, data_dict in enumerate(self.data_dict_list):
+        for data_dict in self.data_dict_list:
             self.PLOT_NUM += 1
             fig = plt.figure(self.PLOT_NUM)
             ax = plt.subplot(111)
             # Rg,Rg StDev,I(0),I(0) StDev,First point,Last point,Quality,Aggregated,
-            rg_slice = slice(int(data_dict['Rg']['First point']), int(data_dict['Rg']['Last point']))
+            rg_slice = slice(int(data_dict['Rg']['First point']),
+                             int(data_dict['Rg']['Last point']))
             ax.plot(data_dict['guinier']['x'][rg_slice], data_dict['guinier']['y'][rg_slice],
-                    label=data_dict['label'], linewidth=1)
+                    marker='o', linestyle='None', label=data_dict['label'], linewidth=1)
             # fitting curve: ln(I(q)) = ln(I0) - Rg^2 / 3 * q^2
             fitting_curve = np.log2(data_dict['Rg']['I(0)']) \
                             - data_dict['Rg']['Rg'] ** 2 / 3 * data_dict['guinier']['x'][rg_slice]
@@ -608,8 +644,7 @@ class DifferenceAnalysis(object):
                     fig_path = os.path.join(directory, filename)
                 else:
                     fig_path = filename
-                fig.savefig(fig_path, dpi=600, bbox_extra_artists=(lgd,), bbox_inches='tight')
+                fig.savefig(fig_path, dpi=self.DPI, bbox_extra_artists=(lgd,), bbox_inches='tight')
 
         if display:
-            # plt.tight_layout()
             plt.show()
