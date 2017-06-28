@@ -29,6 +29,8 @@ def plot_DifferenceAnalysis(root_directory, from_average=False, log_intensity=Tr
     # save figures
     if not figures_directory:
         figures_directory = os.path.join(root_directory, 'Figures')
+    if not os.path.exists(figures_directory):
+        os.makedirs(figures_directory)
     EXP_prefix = os.path.basename(root_directory)
     kwargs = {'display': display, 'save': save_figures, 'directory': figures_directory,
               'legend_loc': legend_loc, 'dash_line_index': dash_line_index}
@@ -39,16 +41,28 @@ def plot_DifferenceAnalysis(root_directory, from_average=False, log_intensity=Tr
     seq_obj.plot_analysis('guinier', axes=axes[0, 1], **kwargs)
     seq_obj.plot_analysis('kratky', axes=axes[1, 0], **kwargs)
     seq_obj.plot_analysis('porod', axes=axes[1, 1], **kwargs)
-    if not os.path.exists(figures_directory):
-        os.makedirs(figures_directory)
-    fig_path = os.path.join(figures_directory, EXP_prefix+'_saxs_general_analysis.'+fig_format)
     lgd = fig.legend(axes[0, 0].get_lines(), seq_obj.data_dict_label(),
                      loc='center left', bbox_to_anchor=(0.95, 0.5), frameon=False)
     # fig.subplots_adjust()
     fig.tight_layout()
+    fig_path = os.path.join(figures_directory, EXP_prefix+'_saxs_general_analysis.'+fig_format)
     fig.savefig(fig_path, dpi=seq_obj.DPI, bbox_extra_artists=(lgd,), bbox_inches='tight')
     if display:
         plt.show()
+
+    # difference
+    # fig, axes = plt.subplots(nrows=2, ncols=1, sharex=True)
+    # seq_obj.plot_difference('relative', axes=axes[0],
+    #                         baseline_index=baseline_index, **kwargs)
+    # seq_obj.plot_difference('absolute', axes=axes[1],
+    #                         baseline_index=baseline_index, **kwargs)
+    # axes[0].set_title(None)
+    # axes[1].set_title([])
+    # lgd = fig.legend(axes[0].get_lines(), seq_obj.data_dict_label(),
+    #                  loc='center left', bbox_to_anchor=(0.95, 0.5), frameon=False)
+    # fig_path = os.path.join(figures_directory, EXP_prefix+'_saxs_difference_analysis.'+fig_format)
+    # if display:
+    #     plt.show()
 
     # single analysis
     # seq_obj.plot_profiles(log_intensity=log_intensity,
@@ -72,6 +86,7 @@ def plot_DifferenceAnalysis(root_directory, from_average=False, log_intensity=Tr
                             baseline_index=baseline_index,
                             **kwargs)
     plt.close('all')
+
     try:
         seq_obj.plot_pair_distribution(output_dir=os.path.join(root_directory, 'Gnom_output'),
                                        filename=EXP_prefix+'_pair_distribution.'+fig_format,
@@ -80,13 +95,13 @@ def plot_DifferenceAnalysis(root_directory, from_average=False, log_intensity=Tr
         print(error.__doc__)
     finally:
         plt.close('all')
-    try:
-        seq_obj.plot_guinier_fitting(display=display, save=True,
-                                     directory=os.path.join(figures_directory, 'guinier_fitting'))
-    except Exception as error:
-        print(error.__doc__)
-    finally:
-        plt.close('all')
+    # try:
+    #     seq_obj.plot_guinier_fitting(display=display, save=True,
+    #                                  directory=os.path.join(figures_directory, 'guinier_fitting'))
+    # except Exception as error:
+    #     print(error.__doc__)
+    # finally:
+    #     plt.close('all')
 
 
 def main():
