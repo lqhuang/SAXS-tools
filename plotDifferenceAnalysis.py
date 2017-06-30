@@ -17,13 +17,18 @@ def plot_DifferenceAnalysis(root_directory, from_average=False, log_intensity=Tr
     # read curves
     file_location = os.path.join(root_directory, 'Simple_Results')
     if from_average:
-        seq_obj = DifferenceAnalysis.from_average_dats(os.path.join(file_location, '*'),
-                                                       smooth=smooth,
-                                                       scale=scale, ref_dat=None,
-                                                       scale_qmin=scale_qmin, scale_qmax=scale_qmax)
+        seq_obj = DifferenceAnalysis.from_average_dats(
+            os.path.join(file_location, 'A_*'), smooth=smooth,
+            scale=scale, ref_dat=None, scale_qmin=scale_qmin, scale_qmax=scale_qmax)
     else:
-        seq_obj = DifferenceAnalysis.from_subtracted_dats(os.path.join(file_location, '*'),
-                                                          smooth=smooth)
+        try:
+            seq_obj = DifferenceAnalysis.from_subtracted_dats(os.path.join(file_location, 'S_*'),
+                                                              smooth=smooth)
+        except FileNotFoundError:
+            print('Warning: Do not find subtracted curves, try to read data from average curves.')
+            seq_obj = DifferenceAnalysis.from_average_dats(
+                os.path.join(file_location, 'A_*'), smooth=smooth,
+                scale=scale, ref_dat=None, scale_qmin=scale_qmin, scale_qmax=scale_qmax)
 
     kwargs = {'display': display, 'save': save_figures, 'directory': figures_directory,
               'legend_loc': legend_loc, 'dash_line_index': dash_line_index}
@@ -33,7 +38,7 @@ def plot_DifferenceAnalysis(root_directory, from_average=False, log_intensity=Tr
         figures_directory = os.path.join(root_directory, 'Figures')
     if not os.path.exists(figures_directory):
         os.makedirs(figures_directory)
-    EXP_prefix = os.path.basename(root_directory)
+    exp_prefix = os.path.basename(root_directory)
 
     # general
     fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(8, 5))
@@ -45,7 +50,7 @@ def plot_DifferenceAnalysis(root_directory, from_average=False, log_intensity=Tr
                      loc='center left', bbox_to_anchor=(0.95, 0.5), frameon=False)
     # fig.subplots_adjust()
     fig.tight_layout()
-    fig_path = os.path.join(figures_directory, EXP_prefix+'_saxs_general_analysis.'+fig_format)
+    fig_path = os.path.join(figures_directory, exp_prefix+'_saxs_general_analysis.'+fig_format)
     try:
         fig.savefig(fig_path, dpi=seq_obj.DPI, bbox_extra_artists=(lgd,), bbox_inches='tight')
     except Exception as error:
@@ -63,56 +68,56 @@ def plot_DifferenceAnalysis(root_directory, from_average=False, log_intensity=Tr
     # axes[1].set_title([])
     # lgd = fig.legend(axes[0].get_lines(), seq_obj.data_dict_label(),
     #                  loc='center left', bbox_to_anchor=(0.95, 0.5), frameon=False)
-    # fig_path = os.path.join(figures_directory, EXP_prefix+'_saxs_difference_analysis.'+fig_format)
+    # fig_path = os.path.join(figures_directory, exp_prefix+'_saxs_difference_analysis.'+fig_format)
     # if display:
     #     plt.show()
 
     # single analysis
     seq_obj.plot_profiles(log_intensity=log_intensity,
-                          filename=EXP_prefix+'_saxs_profiles_log_scale.'+fig_format,
+                          filename=exp_prefix+'_saxs_profiles_log_scale.'+fig_format,
                           **kwargs)
     seq_obj.plot_profiles(log_intensity=False,
                           crop=crop, crop_qmin=crop_qmin, crop_qmax=crop_qmax,
-                          filename=EXP_prefix+'_saxs_profiles.'+fig_format,
+                          filename=exp_prefix+'_saxs_profiles.'+fig_format,
                           **kwargs)
     # seq_obj.plot_analysis('guinier',
-    #                       filename=EXP_prefix+'_saxs_guinier_analysis.'+fig_format,
+    #                       filename=exp_prefix+'_saxs_guinier_analysis.'+fig_format,
     #                       **kwargs)
     seq_obj.plot_analysis('kratky',
-                          filename=EXP_prefix+'_saxs_kratky_analysis.'+fig_format,
+                          filename=exp_prefix+'_saxs_kratky_analysis.'+fig_format,
                           **kwargs)
     # seq_obj.plot_analysis('porod',
-    #                       filename=EXP_prefix+'_saxs_porod_analysis.'+fig_format,
+    #                       filename=exp_prefix+'_saxs_porod_analysis.'+fig_format,
     #                       **kwargs)
     seq_obj.plot_difference('relative',
                             baseline_index=baseline_index,
                             crop=crop, crop_qmin=crop_qmin, crop_qmax=crop_qmax,
-                            filename=EXP_prefix+'_relative_ratio.'+fig_format,
+                            filename=exp_prefix+'_relative_ratio.'+fig_format,
                             **kwargs)
     seq_obj.plot_difference('absolute',
                             baseline_index=baseline_index,
                             crop=crop, crop_qmin=crop_qmin, crop_qmax=crop_qmax,
-                            filename=EXP_prefix+'_absolute_diff.'+fig_format,
+                            filename=exp_prefix+'_absolute_diff.'+fig_format,
                             **kwargs)
     plt.close('all')
 
     try:
         seq_obj.plot_pair_distribution(output_dir=os.path.join(root_directory, 'Gnom_output'),
-                                       filename=EXP_prefix+'_pair_distribution.'+fig_format,
+                                       filename=exp_prefix+'_pair_distribution.'+fig_format,
                                        **kwargs)
     except AssertionError:
         print('Warning: couldn\'t find radius of gyration for some dat files')
     except Exception as error:
-        raise(error)
         print('Exception Information:', error.__doc__)
+        raise(error)
     finally:
         plt.close('all')
     try:
         seq_obj.plot_guinier_fitting(display=display, save=True,
                                      directory=os.path.join(figures_directory, 'guinier_fitting'))
     except Exception as error:
-        raise(error)
         print('Exception Information:', error.__doc__)
+        raise(error)
     finally:
         plt.close('all')
 

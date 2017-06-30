@@ -147,8 +147,7 @@ class DifferenceAnalysis(object):
         if len(file_list) == 0:
             raise FileNotFoundError('Do not find dat files.')
         average_dat_list = [fname for fname in file_list \
-                            if fname.split(os.path.sep)[-1].lower().startswith('a') \
-                               and 'buffer' not in fname.split(os.path.sep)[-1].lower()]
+                            if 'buffer' not in fname.split(os.path.sep)[-1].lower()]
         if len(average_dat_list) == 0:
             raise FileNotFoundError('Do not find any average dats.')
         # read buffer
@@ -156,7 +155,8 @@ class DifferenceAnalysis(object):
         if buffer_dat:
             buffer_dict['q'], buffer_dict['I'], buffer_dict['E'] = dat.load_RAW_dat(buffer_dat)
         else:
-            buffer_dat = [fname for fname in file_list if 'buffer' in fname.lower()]
+            buffer_dat = [fname for fname in file_list \
+                          if 'buffer' in fname.split(os.path.sep)[-1].lower()]
             try:
                 print('Use buffer file:', buffer_dat[0])
             except IndexError:
@@ -176,21 +176,13 @@ class DifferenceAnalysis(object):
     def from_subtracted_dats(self, subtracted_dat_location, smooth=False,
                              from_average=True):
         # glob files
-        file_list = glob.glob(subtracted_dat_location)
-        if len(file_list) == 0:
-            raise FileNotFoundError('Do not find dat files')
+        subtracted_dat_list = glob.glob(subtracted_dat_location)
+        if len(subtracted_dat_list) == 0:
+            raise FileNotFoundError('Do not find any subtracted dat files.')
         # read data
-        subtracted_dat_list = [fname for fname in file_list \
-                               if fname.split(os.path.sep)[-1].lower().startswith('s')]
-        if len(subtracted_dat_list) != 0:
-            data_dict_list = [get_data_dict(dat_file, smooth=smooth) \
-                              for dat_file in subtracted_dat_list]
-            cls = DifferenceAnalysis(data_dict_list, file_list=subtracted_dat_list)
-        elif from_average and len(subtracted_dat_list) == 0:
-            print('Warning: Do not find any subtracted curves, try to read data from average curves.')
-            cls = DifferenceAnalysis.from_average_dats(subtracted_dat_location, smooth=smooth)
-        elif not from_average and len(subtracted_dat_list) == 0:
-            raise ValueError('Do not exist subtracted dat files')
+        data_dict_list = [get_data_dict(dat_file, smooth=smooth) \
+                          for dat_file in subtracted_dat_list]
+        cls = DifferenceAnalysis(data_dict_list, file_list=subtracted_dat_list)
         return cls
 
     @classmethod
