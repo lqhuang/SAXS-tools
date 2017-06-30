@@ -33,7 +33,14 @@ def parse_gnom_file(gnom_name):
                 break
         data = gnom_file.readline().split()
         gnom_dict['real_rg'] = float(data[4])
-        gnom_dict['real_I0'] = float(data[9])
+        try:
+            gnom_dict['real_I0'] = float(data[9])
+        except ValueError:
+            """
+            Real space: Rg =  122.76 +-25.012  I(0) =   0.1335E+02 +-  0.1821E+01
+            ValueError: could not convert string to float: '+-'
+            """
+            gnom_dict['real_I0'] = float(data[8])
         gnom_dict['r'] = asarray(r)
         gnom_dict['pr'] = asarray(pr)
         gnom_dict['error'] = asarray(error)
