@@ -235,7 +235,31 @@ class DifferenceAnalysis(object):
         for data_dict in self.data_dict_list:
             data_dict['absolute_diff'] = data_dict['I'] - baseline_dict['I']
 
-    def calc_radius_of_gyration(self, options=''):
+    def eval_datcrop(self, qmin, qmax):
+        """
+        datcrop:
+        --first <N>	Index of the first point to be kept. This is mutually exclusive with smin.
+ 	    --last <N>	Index of the last point to be kept. This is mutually exclusive with smax.
+ 	    --smin <S>	Minimal s value to be kept. This is mutually exclusive with first.
+ 	    --smax <S>	Maximal s value to be kept. This is mutually exclusive with last.
+        -o	--output DATAFILE	Relative or absolute path to save the result; if not specified, the result is printed to stdout.
+
+        datcrop bsa.dat --first 29 --smax 2.5 -o bsa_cropped.dat
+        """
+        file_list = list()
+        skip = list()
+        for i, dat_file in enumerate(self.file_list):
+            first = sum(self.data_dict_list[i]['q'] < qmin) + 1
+            last = sum(self.data_dict_list[i]['q'] < qmax) + 1
+            skip.append(first)
+            output = os.path.join(os.path.dirname(dat_file), 'cropped_'+os.path.basename(dat_file))
+            datcrop = 'datcrop {0} --first {1} --last {2} --output {3}'.format(
+                dat_file, first, last, output)
+            run_system_command(datcrop)
+            file_list.append(output)
+        return file_list, skip
+
+    def calc_radius_of_gyration(self, options='', crop=True, del_cropped=True):
         """
         autorg:
         output for csv support:
@@ -244,25 +268,35 @@ class DifferenceAnalysis(object):
         Rg,Rg StDev,I(0),I(0) StDev,First point,Last point,Quality,Aggregated,File
 
         ref: https://www.embl-hamburg.de/biosaxs/manuals/autorg.html
+        --mininterval <NUMBER>	Minimum acceptable Guinier interval length in points. Default is '3'.
         """
         if self.file_list is None:
             raise FileNotFoundError('Please specifiy input dat files')
+        if crop:
+            file_list, skip = self.eval_datcrop(qmin=0.010, qmax=0.20)  # (1/angstrom)
+        else:
+            file_list = self.file_list
+            skip = [0 for i in range(self.num_curves)]
         output_format = '-f csv'
         mininterval = 10  # default: 3
         autorg = 'autorg {0} {1} --mininterval {2} {3}'.format(
-            ' '.join(self.file_list), output_format, mininterval, options)
+            ' '.join(file_list), output_format, mininterval, options)
         log = run_system_command(autorg).splitlines()
         assert self.num_curves == len(log) - 1
         rg_keys = log[0].split(',')
         # undone: skip 'File' information
-        for i, data_dict in enumerate(self.data_dict_list, 1):
-            rg_data = log[i].split(',')
+        for i, data_dict in enumerate(self.data_dict_list):
             data_dict['Rg'] = dict()
+            data_dict['Rg']['skip'] = skip[i-1]  # skip points due to cropping
+            rg_data = log[i+1].split(',')  # first line (idx=0) is key map.
             for j, key in enumerate(rg_keys):
                 try:
                     data_dict['Rg'][key] = float(rg_data[j])
                 except ValueError:
                     data_dict['Rg'][key] = rg_data[j]
+        if crop and del_cropped:
+            for cropped_file in file_list:
+                os.remove(cropped_file)
 
     def calc_pair_distribution(self, output_dir='.', options='', rg_options=''):
         """
@@ -285,7 +319,7 @@ class DifferenceAnalysis(object):
             else:
                 print('Warning: {0} file do not end with .dat format'.format(data_dict['filename']))
                 output_name = os.path.join(output_dir, data_dict['filename']+'.out')
-            skip = sum(data_dict['q'] < 0.010)  # ignore q < 0.010 (1/angstrom)
+            skip = sum(data_dict['q'] < 0.010) + 1 # ignore q < 0.010 (1/angstrom)
             datgnom = 'datgnom4 {0} --rg {1} --output {2} --skip {3} {4}'.format(
                 data_dict['filepath'], rg, output_name, skip, options)
             log = run_system_command(datgnom)
@@ -594,8 +628,9 @@ class DifferenceAnalysis(object):
         # ++++++++++++++++++++++++++++++ PLOT +++++++++++++++++++++++++++ #
         for data_dict in self.data_dict_list:
             # Rg,Rg StDev,I(0),I(0) StDev,First point,Last point,Quality,Aggregated,
-            rg_slice = slice(int(data_dict['Rg']['First point']),
-                             int(data_dict['Rg']['Last point']))
+            rg_skip = data_dict['Rg']['skip']  # skip points
+            rg_slice = slice(rg_skip + int(data_dict['Rg']['First point']) - 1,
+                             rg_skip + int(data_dict['Rg']['Last point']))
             # fitting curve: ln(I(q)) = ln(I0) - Rg^2 / 3 * q^2
             fitting_curve = np.log2(data_dict['Rg']['I(0)']) \
                             - data_dict['Rg']['Rg'] ** 2 / 3 * data_dict['guinier']['x'][rg_slice]
