@@ -20,20 +20,20 @@ def plot_DifferenceAnalysis(root_directory, from_average=False, log_intensity=Tr
         seq_obj = DifferenceAnalysis.from_average_dats(os.path.join(file_location, '*'),
                                                        smooth=smooth,
                                                        scale=scale, ref_dat=None,
-                                                       scale_qmin=scale_qmin, scale_qmax=scale_qmax,
-                                                       crop=crop, crop_qmin=crop_qmin, crop_qmax=crop_qmax)
+                                                       scale_qmin=scale_qmin, scale_qmax=scale_qmax)
     else:
         seq_obj = DifferenceAnalysis.from_subtracted_dats(os.path.join(file_location, '*'),
-                                                          smooth=smooth,
-                                                          crop=crop, crop_qmin=crop_qmin, crop_qmax=crop_qmax)
+                                                          smooth=smooth)
+
+    kwargs = {'display': display, 'save': save_figures, 'directory': figures_directory,
+              'legend_loc': legend_loc, 'dash_line_index': dash_line_index}
+
     # save figures
     if not figures_directory:
         figures_directory = os.path.join(root_directory, 'Figures')
     if not os.path.exists(figures_directory):
         os.makedirs(figures_directory)
     EXP_prefix = os.path.basename(root_directory)
-    kwargs = {'display': display, 'save': save_figures, 'directory': figures_directory,
-              'legend_loc': legend_loc, 'dash_line_index': dash_line_index}
 
     # general
     fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(8, 5))
@@ -72,6 +72,7 @@ def plot_DifferenceAnalysis(root_directory, from_average=False, log_intensity=Tr
                           filename=EXP_prefix+'_saxs_profiles_log_scale.'+fig_format,
                           **kwargs)
     seq_obj.plot_profiles(log_intensity=False,
+                          crop=crop, crop_qmin=crop_qmin, crop_qmax=crop_qmax,
                           filename=EXP_prefix+'_saxs_profiles.'+fig_format,
                           **kwargs)
     # seq_obj.plot_analysis('guinier',
@@ -84,12 +85,14 @@ def plot_DifferenceAnalysis(root_directory, from_average=False, log_intensity=Tr
     #                       filename=EXP_prefix+'_saxs_porod_analysis.'+fig_format,
     #                       **kwargs)
     seq_obj.plot_difference('relative',
-                            filename=EXP_prefix+'_relative_ratio.'+fig_format,
                             baseline_index=baseline_index,
+                            crop=crop, crop_qmin=crop_qmin, crop_qmax=crop_qmax,
+                            filename=EXP_prefix+'_relative_ratio.'+fig_format,
                             **kwargs)
     seq_obj.plot_difference('absolute',
-                            filename=EXP_prefix+'_absolute_diff.'+fig_format,
                             baseline_index=baseline_index,
+                            crop=crop, crop_qmin=crop_qmin, crop_qmax=crop_qmax,
+                            filename=EXP_prefix+'_absolute_diff.'+fig_format,
                             **kwargs)
     plt.close('all')
 

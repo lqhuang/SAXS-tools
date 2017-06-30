@@ -204,6 +204,18 @@ def crop_curve(curve, qmin=0.0, qmax=-1.0):
     curve_E = np.asarray(curve[2][crop_idx])
     return curve_q, curve_I, curve_E
 
+def get_crop_slice(q, crop, crop_qmin, crop_qmax):
+    """
+    return slicing index for cropping
+    """
+    if crop:
+        if crop_qmax < 0:
+            return q >= crop_qmin
+        else:
+            return np.logical_and(q >= crop_qmin, q < crop_qmax)
+    else:
+        return q >= 0.0
+
 def averge_curves(curves_dat_list):
     pass
     if not os.path.exists(directory):

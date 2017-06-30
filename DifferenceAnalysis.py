@@ -8,8 +8,7 @@ from saxsio import dat, gnom
 from utils import run_system_command
 
 
-def get_data_dict(dat_file, smooth=False, crop=False,
-                  crop_qmin=0.0, crop_qmax=-1.0):
+def get_data_dict(dat_file, smooth=False):
     data_dict = dict()
     filename = dat_file.split(os.path.sep)[-1]
     data_dict['filepath'] = dat_file
@@ -23,9 +22,6 @@ def get_data_dict(dat_file, smooth=False, crop=False,
     data_dict['label'] = filename[start+2:].replace('.dat', '').replace('_', ' ')
     data_dict['linestyle'] = '-'
     q, intensity, error = dat.load_RAW_dat(dat_file)
-    if crop:
-        q, intensity, error = dat.crop_curve((q, intensity, error),
-                                             qmin=crop_qmin, qmax=crop_qmax)
     data_dict['q'] = q
     if smooth:
         data_dict['I'] = dat.smooth_curve(intensity)
@@ -34,8 +30,8 @@ def get_data_dict(dat_file, smooth=False, crop=False,
     data_dict['E'] = error
     return data_dict
 
+
 def subtract_data_dict(data_dict_list, buffer_dict, smooth=False,
-                       crop=False, crop_qmin=0.0, crop_qmax=-1.0,
                        scale=False, ref_dat=None, scale_qmin=0.0, scale_qmax=-1.0):
     assert len(data_dict_list[0]['q']) == len(buffer_dict['q'])
     if ref_dat:
@@ -59,10 +55,6 @@ def subtract_data_dict(data_dict_list, buffer_dict, smooth=False,
         data_dict['I'] -= buffer_dict['I']
         if smooth:
             data_dict['I'] = dat.smooth_curve(data_dict['I'])
-        if crop:
-            data_dict['q'], data_dict['I'], data_dict['E'] = \
-                dat.crop_curve((data_dict['q'], data_dict['I'], data_dict['E']),
-                               qmin=crop_qmin, qmax=crop_qmax)
     return data_dict_list
 
 
@@ -122,16 +114,12 @@ class DifferenceAnalysis(object):
     #                         CONSTRUCTOR METHOD                              #
     # ----------------------------------------------------------------------- #
     def __init__(self, data_dict_list, buffer_dict=None,
-                 crop=False, crop_qmin=0.0, crop_qmax=-1.0,
                  file_list=None):
         self.file_list = file_list
         self.num_curves = len(data_dict_list)
         self.data_dict_list = data_dict_list
         if buffer_dict:
             self.buffer_dict = buffer_dict
-        self.crop = crop
-        self.crop_qmin = crop_qmin
-        self.crop_qmax = crop_qmax
 
     def __del__(self):
         plt.close('all')
@@ -153,8 +141,7 @@ class DifferenceAnalysis(object):
     @classmethod
     def from_average_dats(self, average_dat_location, buffer_dat=None,
                           smooth=False,
-                          scale=False, ref_dat=None, scale_qmin=0.0, scale_qmax=-1.0,
-                          crop=False, crop_qmin=0, crop_qmax=-1.0):
+                          scale=False, ref_dat=None, scale_qmin=0.0, scale_qmax=-1.0):
         # glob files
         file_list = glob.glob(average_dat_location)
         if len(file_list) == 0:
@@ -174,24 +161,19 @@ class DifferenceAnalysis(object):
                 print('Use buffer file:', buffer_dat[0])
             except IndexError:
                 raise FileNotFoundError('Please check whether exist a buffer dat file.')
-            buffer_dict = get_data_dict(buffer_dat[0], crop=crop,
-                                        crop_qmin=crop_qmin, crop_qmax=crop_qmax)
+            buffer_dict = get_data_dict(buffer_dat[0])
         # subtracting
-        data_dict_list = [get_data_dict(dat_file, crop=crop,
-                                        crop_qmin=crop_qmin, crop_qmax=crop_qmax) \
-                          for dat_file in average_dat_list]
+        data_dict_list = [get_data_dict(dat_file) for dat_file in average_dat_list]
         # smoothing must behind subtracting, cropping after scaling.
         subtracted_data_dict_list = subtract_data_dict(data_dict_list, buffer_dict, smooth=smooth,
                                                        scale=scale, ref_dat=ref_dat,
-                                                       scale_qmin=scale_qmin, scale_qmax=scale_qmax,
-                                                       crop=crop, crop_qmin=crop_qmin, crop_qmax=crop_qmax)
+                                                       scale_qmin=scale_qmin, scale_qmax=scale_qmax)
         cls = DifferenceAnalysis(subtracted_data_dict_list, buffer_dict=buffer_dict, file_list=None)
         # Undone: pass file_list of dats into class
         return cls
 
     @classmethod
     def from_subtracted_dats(self, subtracted_dat_location, smooth=False,
-                             crop=False, crop_qmin=0.0, crop_qmax=-1.0,
                              from_average=True):
         # glob files
         file_list = glob.glob(subtracted_dat_location)
@@ -201,14 +183,12 @@ class DifferenceAnalysis(object):
         subtracted_dat_list = [fname for fname in file_list \
                                if fname.split(os.path.sep)[-1].lower().startswith('s')]
         if len(subtracted_dat_list) != 0:
-            data_dict_list = [get_data_dict(dat_file, smooth=smooth, crop=crop,
-                                            crop_qmin=crop_qmin, crop_qmax=crop_qmax) \
+            data_dict_list = [get_data_dict(dat_file, smooth=smooth) \
                               for dat_file in subtracted_dat_list]
             cls = DifferenceAnalysis(data_dict_list, file_list=subtracted_dat_list)
         elif from_average and len(subtracted_dat_list) == 0:
             print('Warning: Do not find any subtracted curves, try to read data from average curves.')
-            cls = DifferenceAnalysis.from_average_dats(subtracted_dat_location, smooth=smooth,
-                                                       crop=crop, crop_qmin=crop_qmin, crop_qmax=crop_qmax)
+            cls = DifferenceAnalysis.from_average_dats(subtracted_dat_location, smooth=smooth)
         elif not from_average and len(subtracted_dat_list) == 0:
             raise ValueError('Do not exist subtracted dat files')
         return cls
@@ -250,8 +230,7 @@ class DifferenceAnalysis(object):
         if not baseline_dat:
             baseline_dict = self.data_dict_list[baseline_index-1]
         else:
-            baseline_dict = get_data_dict(baseline_dat, crop=self.crop,
-                                          crop_qmin=self.crop_qmin, crop_qmax=self.crop_qmax)
+            baseline_dict = get_data_dict(baseline_dat)
         for data_dict in self.data_dict_list:
             data_dict['relative_diff'] = (data_dict['I'] - baseline_dict['I']) / baseline_dict['I']
             data_dict['relative_diff'] *= 100
@@ -260,8 +239,7 @@ class DifferenceAnalysis(object):
         if not baseline_dat:
             baseline_dict = self.data_dict_list[baseline_index-1]
         else:
-            baseline_dict = get_data_dict(baseline_dat, crop=self.crop,
-                                          crop_qmin=self.crop_qmin, crop_qmax=self.crop_qmax)
+            baseline_dict = get_data_dict(baseline_dat)
         for data_dict in self.data_dict_list:
             data_dict['absolute_diff'] = data_dict['I'] - baseline_dict['I']
 
@@ -315,7 +293,7 @@ class DifferenceAnalysis(object):
             else:
                 print('Warning: {0} file do not end with .dat format'.format(data_dict['filename']))
                 output_name = os.path.join(output_dir, data_dict['filename']+'.out')
-            skip = sum(data_dict['q'] < 0.01) # ignore q < 0.01
+            skip = sum(data_dict['q'] < 0.010)  # ignore q < 0.010 (1/angstrom)
             datgnom = 'datgnom4 {0} --rg {1} --output {2} --skip {3} {4}'.format(
                 data_dict['filepath'], rg, output_name, skip, options)
             log = run_system_command(datgnom)
@@ -330,7 +308,7 @@ class DifferenceAnalysis(object):
         for data_dict in self.data_dict_list:
             data_dict['guinier'] = dict()
             data_dict['guinier']['x'] = data_dict['q'] ** 2
-            data_dict['guinier']['y'] = np.log2(data_dict['I']) # in ln scale
+            data_dict['guinier']['y'] = np.log2(data_dict['I'])  # in ln scale
 
     def calc_kratky(self):
         """
@@ -356,6 +334,7 @@ class DifferenceAnalysis(object):
 
     # ----------------------- PLOT ------------------------#
     def plot_profiles(self, log_intensity=True, dash_line_index=(None,),
+                      crop=False, crop_qmin=0.0, crop_qmax=-1.0,
                       display=True, save=False, filename=None, legend_loc='left', directory=None,
                       axes=None):
         """
@@ -378,11 +357,13 @@ class DifferenceAnalysis(object):
             fig = plt.figure(self.PLOT_NUM)
             ax = plt.subplot(111)
         for data_dict in self.data_dict_list:
-            ax.plot(data_dict['q'], data_dict[intensity_key],
+            crop_slice = dat.get_crop_slice(data_dict['q'], crop, crop_qmin, crop_qmax)
+            ax.plot(data_dict['q'][crop_slice], data_dict[intensity_key][crop_slice],
                     label=data_dict['label'],
                     linestyle=data_dict['linestyle'], linewidth=1)
         if not log_intensity:
-            zeros_x = self.data_dict_list[0]['q']
+            crop_slice = dat.get_crop_slice(self.data_dict_list[0]['q'], crop, crop_qmin, crop_qmax)
+            zeros_x = self.data_dict_list[0]['q'][crop_slice]
             zeros_y = np.zeros_like(zeros_x)
             ax.plot(zeros_x, zeros_y, '--r')
         ax.set_xlabel(self.XLABEL['q'], fontdict=self.PLOT_LABEL)
@@ -419,6 +400,7 @@ class DifferenceAnalysis(object):
                 plt.show()
 
     def plot_analysis(self, analysis, dash_line_index=(None,),
+                      crop=False, crop_qmin=0.0, crop_qmax=-1.0,
                       display=True, save=False, filename=None, legend_loc='left', directory=None,
                       axes=None):
         """
@@ -442,7 +424,8 @@ class DifferenceAnalysis(object):
             fig = plt.figure(self.PLOT_NUM)
             ax = plt.subplot(111)
         for data_dict in self.data_dict_list:
-            ax.plot(data_dict[analysis]['x'], data_dict[analysis]['y'],
+            crop_slice = dat.get_crop_slice(data_dict['q'], crop, crop_qmin, crop_qmax)
+            ax.plot(data_dict[analysis]['x'][crop_slice], data_dict[analysis]['y'][crop_slice],
                     label=data_dict['label'],
                     linestyle=data_dict['linestyle'], linewidth=1)
         ax.set_xlabel(self.XLABEL[analysis], fontdict=self.PLOT_LABEL)
@@ -461,6 +444,76 @@ class DifferenceAnalysis(object):
         # +++++++++++++++++++++ SAVE AND/OR DISPLAY +++++++++++++++++++++ #
         if not filename:
             filename = 'saxs_{}_analysis.png'.format(analysis)
+        if not axes:
+            if save:
+                if directory:
+                    if not os.path.exists(directory):
+                        os.mkdir(directory)
+                    fig_path = os.path.join(directory, filename)
+                else:
+                    fig_path = filename
+                fig.savefig(fig_path, dpi=self.DPI, bbox_extra_artists=(lgd,), bbox_inches='tight')
+            if display:
+                # ax.legend().draggable()
+                # fig.tight_layout()
+                plt.show()
+
+    def plot_difference(self, difference,
+                        crop=False, crop_qmin=0.0, crop_qmax=-1.0,
+                        baseline_index=0, baseline_dat=None, dash_line_index=(None,),
+                        display=True, save=False, filename=None, legend_loc='left', directory=None,
+                        axes=None):
+        """
+        Sequence Difference Analysis
+        """
+        self.PLOT_NUM += 1
+
+        # +++++++++++++++++++ CALCULATE DIFFERENCE ++++++++++++++++++++++ #
+        diff_mode = str(difference).lower() + '_diff'
+        try:
+            eval('self.calc_{0}(baseline_index={1}, baseline_dat={2})'.format(
+                diff_mode, baseline_index, baseline_dat))
+        except NameError:
+            raise ValueError('Error: unsupport mode of difference analysis. Please check again.')
+
+        # ++++++++++++++++++++++++++++++ PLOT +++++++++++++++++++++++++++ #
+        self.update_linestyle(dash_line_index=dash_line_index)
+        if axes:
+            ax = axes
+        else:
+            fig = plt.figure(self.PLOT_NUM)
+            ax = plt.subplot(111)
+        for data_dict in self.data_dict_list:
+            crop_slice = dat.get_crop_slice(data_dict['q'], crop, crop_qmin, crop_qmax)
+            ax.plot(data_dict['q'][crop_slice], data_dict[diff_mode][crop_slice],
+                    label=data_dict['label'],
+                    linestyle=data_dict['linestyle'], linewidth=1)
+        ylim = ax.get_ylim()
+        if ylim[0] >= -2.0:
+            lower_lim = -2.0
+        else:
+            lower_lim = ylim[0]
+        if ylim[1] <= 2.0:
+            upper_lim = 2.0
+        else:
+            upper_lim = ylim[1]
+        ax.set_ylim([lower_lim, upper_lim])
+        ax.set_xlabel(self.XLABEL['q'], fontdict=self.PLOT_LABEL)
+        ax.set_ylabel(self.YLABEL[diff_mode], fontdict=self.PLOT_LABEL)
+        ax.set_title(r'{0} Difference Analysis'.format(difference.lower().capitalize()))
+        if not axes:
+            box = ax.get_position()
+            ax.set_position([box.x0, box.y0, box.width * 1.1, box.height])
+            if 'left' in legend_loc:
+                lgd = ax.legend(loc='center left', bbox_to_anchor=(1, 0.5),
+                                frameon=False, prop={'size': self.LEGEND_SIZE})
+            elif 'down' in legend_loc:
+                lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15),
+                                frameon=False, prop={'size': self.LEGEND_SIZE})
+
+        # +++++++++++++++++++++ SAVE AND/OR DISPLAY +++++++++++++++++++++ #
+        if not filename:
+            filename = '{0}.png'.format(diff_mode)
         if not axes:
             if save:
                 if directory:
@@ -534,74 +587,6 @@ class DifferenceAnalysis(object):
                 # fig.tight_layout()
                 plt.show()
 
-    def plot_difference(self, difference,
-                        baseline_index=0, baseline_dat=None, dash_line_index=(None,),
-                        display=True, save=False, filename=None, legend_loc='left', directory=None,
-                        axes=None):
-        """
-        Sequence Difference Analysis
-        """
-        self.PLOT_NUM += 1
-
-        # +++++++++++++++++++ CALCULATE DIFFERENCE ++++++++++++++++++++++ #
-        diff_mode = str(difference).lower() + '_diff'
-        try:
-            eval('self.calc_{0}(baseline_index={1}, baseline_dat={2})'.format(
-                diff_mode, baseline_index, baseline_dat))
-        except NameError:
-            raise ValueError('Error: unsupport mode of difference analysis. Please check again.')
-
-        # ++++++++++++++++++++++++++++++ PLOT +++++++++++++++++++++++++++ #
-        self.update_linestyle(dash_line_index=dash_line_index)
-        if axes:
-            ax = axes
-        else:
-            fig = plt.figure(self.PLOT_NUM)
-            ax = plt.subplot(111)
-        for data_dict in self.data_dict_list:
-            ax.plot(data_dict['q'], data_dict[diff_mode],
-                    label=data_dict['label'],
-                    linestyle=data_dict['linestyle'], linewidth=1)
-        ylim = ax.get_ylim()
-        if ylim[0] >= -2.0:
-            lower_lim = -2.0
-        else:
-            lower_lim = ylim[0]
-        if ylim[1] <= 2.0:
-            upper_lim = 2.0
-        else:
-            upper_lim = ylim[1]
-        ax.set_ylim([lower_lim, upper_lim])
-        ax.set_xlabel(self.XLABEL['q'], fontdict=self.PLOT_LABEL)
-        ax.set_ylabel(self.YLABEL[diff_mode], fontdict=self.PLOT_LABEL)
-        ax.set_title(r'{0} Difference Analysis'.format(difference.lower().capitalize()))
-        if not axes:
-            box = ax.get_position()
-            ax.set_position([box.x0, box.y0, box.width * 1.1, box.height])
-            if 'left' in legend_loc:
-                lgd = ax.legend(loc='center left', bbox_to_anchor=(1, 0.5),
-                                frameon=False, prop={'size': self.LEGEND_SIZE})
-            elif 'down' in legend_loc:
-                lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15),
-                                frameon=False, prop={'size': self.LEGEND_SIZE})
-
-        # +++++++++++++++++++++ SAVE AND/OR DISPLAY +++++++++++++++++++++ #
-        if not filename:
-            filename = '{0}.png'.format(diff_mode)
-        if not axes:
-            if save:
-                if directory:
-                    if not os.path.exists(directory):
-                        os.mkdir(directory)
-                    fig_path = os.path.join(directory, filename)
-                else:
-                    fig_path = filename
-                fig.savefig(fig_path, dpi=self.DPI, bbox_extra_artists=(lgd,), bbox_inches='tight')
-            if display:
-                # ax.legend().draggable()
-                # fig.tight_layout()
-                plt.show()
-
     def plot_guinier_fitting(self,
                              display=True, save=False, filename=None, directory=None):
         """
@@ -633,12 +618,12 @@ class DifferenceAnalysis(object):
             ax[0].set_ylabel(self.YLABEL['guinier'], fontdict=self.PLOT_LABEL)
             ax[0].set_title(r'Guinier Fitting (Quality={0:.2f}%, Aggregated={1:.2f}%)'.format(
                 data_dict['Rg']['Quality'] * 100, data_dict['Rg']['Aggregated'] * 100))
-            lgd = ax[0].legend(loc=0, frameon=False, prop={'size': self.LEGEND_SIZE})
+            ax[0].legend(loc=0, frameon=False, prop={'size': self.LEGEND_SIZE-2})
             ax[1].plot(data_dict['q'][rg_slice], np.log10(data_dict['I'][rg_slice]),
                        marker='o', linestyle='None', label=data_dict['label'], linewidth=1)
             ax[1].set_xlabel(self.XLABEL['q'], fontdict=self.PLOT_LABEL)
             ax[1].set_ylabel(self.YLABEL['log_I'], fontdict=self.PLOT_LABEL)
-            lgd = ax[1].legend(loc=0, frameon=False, prop={'size': self.LEGEND_SIZE})
+            ax[1].legend(loc=0, frameon=True, prop={'size': self.LEGEND_SIZE-2})
             fig.tight_layout()
 
             # +++++++++++++++++++++ SAVE AND/OR DISPLAY +++++++++++++++++++++ #
