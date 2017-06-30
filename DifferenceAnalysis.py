@@ -105,11 +105,14 @@ class DifferenceAnalysis(object):
     PLOT_NUM = 0
 
     XLABEL = dict()
+    XLABEL['q'] = r'Scattering Vector, $q$ $(\mathrm{\AA^{-1}})$'
     XLABEL['guinier'] = r'$q^2$ $(\mathrm{\AA^{-2}})$'
     XLABEL['kratky'] = r'Scattering Vector, $q$ $(\mathrm{\AA^{-1}})$'
     XLABEL['porod'] = r'$q^4$ $(\mathrm{\AA^{-4}})$'
     YLABEL = dict()
-    YLABEL['guinier'] = r'$\mathrm{ln}(I(q))$'
+    YLABEL['I'] = r'Intensity (arb. units.)'
+    YLABEL['log_I'] = r'$\log(I)$'
+    YLABEL['guinier'] = r'$\ln(I(q))$'
     YLABEL['kratky'] = r'$I(q) \cdot q^2$'
     YLABEL['porod'] = r'$I(q) \cdot q^4$'
     YLABEL['relative_diff'] = r'Relative Ratio (%)'
@@ -275,7 +278,9 @@ class DifferenceAnalysis(object):
         if self.file_list is None:
             raise FileNotFoundError('Please specifiy input dat files')
         output_format = '-f csv'
-        autorg = 'autorg {0} {1} {2}'.format(' '.join(self.file_list), output_format, options)
+        mininterval = 10  # default: 3
+        autorg = 'autorg {0} {1} --mininterval {2} {3}'.format(
+            ' '.join(self.file_list), output_format, mininterval, options)
         log = run_system_command(autorg).splitlines()
         assert self.num_curves == len(log) - 1
         rg_keys = log[0].split(',')
@@ -289,7 +294,7 @@ class DifferenceAnalysis(object):
                 except ValueError:
                     data_dict['Rg'][key] = rg_data[j]
 
-    def calc_pair_distribution(self, output_dir='.', options=''):
+    def calc_pair_distribution(self, output_dir='.', options='', rg_options=''):
         """
         datgnom4
         calculate pair distribution function
@@ -300,7 +305,7 @@ class DifferenceAnalysis(object):
         https://www.embl-hamburg.de/biosaxs/manuals/gnom.html
         """
         if 'Rg' not in self.data_dict_keys():
-            self.calc_radius_of_gyration()
+            self.calc_radius_of_gyration(options=rg_options)
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
         for data_dict in self.data_dict_list:
@@ -310,8 +315,9 @@ class DifferenceAnalysis(object):
             else:
                 print('Warning: {0} file do not end with .dat format'.format(data_dict['filename']))
                 output_name = os.path.join(output_dir, data_dict['filename']+'.out')
-            datgnom = 'datgnom4 {0} --rg {1} --output {2} {3}'.format(
-                data_dict['filepath'], rg, output_name, options)
+            skip = sum(data_dict['q'] < 0.01) # ignore q < 0.01
+            datgnom = 'datgnom4 {0} --rg {1} --output {2} --skip {3} {4}'.format(
+                data_dict['filepath'], rg, output_name, skip, options)
             log = run_system_command(datgnom)
             data_dict['pair_distribution'] = gnom.parse_gnom_file(output_name)
 
@@ -379,11 +385,8 @@ class DifferenceAnalysis(object):
             zeros_x = self.data_dict_list[0]['q']
             zeros_y = np.zeros_like(zeros_x)
             ax.plot(zeros_x, zeros_y, '--r')
-        ax.set_xlabel(r'Scattering Vector, $q$ $(\mathrm{\AA^{-1}})$', fontdict=self.PLOT_LABEL)
-        if log_intensity:
-            ax.set_ylabel(r'$\log(I)$ (arb. units.)', fontdict=self.PLOT_LABEL)
-        else:
-            ax.set_ylabel(r'Intensity (arb. units.)', fontdict=self.PLOT_LABEL)
+        ax.set_xlabel(self.XLABEL['q'], fontdict=self.PLOT_LABEL)
+        ax.set_ylabel(self.YLABEL[intensity_key], fontdict=self.PLOT_LABEL)
         ax.set_title(r'SAXS Subtracted Profiles')
         if not axes:
             box = ax.get_position()
@@ -569,7 +572,7 @@ class DifferenceAnalysis(object):
         else:
             upper_lim = ylim[1]
         ax.set_ylim([lower_lim, upper_lim])
-        ax.set_xlabel(r'Scattering Vector, $q$ $(\mathrm{\AA^{-1}})$', fontdict=self.PLOT_LABEL)
+        ax.set_xlabel(self.XLABEL['q'], fontdict=self.PLOT_LABEL)
         ax.set_ylabel(self.YLABEL[diff_mode], fontdict=self.PLOT_LABEL)
         ax.set_title(r'{0} Difference Analysis'.format(difference.lower().capitalize()))
         if not axes:
@@ -613,26 +616,30 @@ class DifferenceAnalysis(object):
 
         # ++++++++++++++++++++++++++++++ PLOT +++++++++++++++++++++++++++ #
         for data_dict in self.data_dict_list:
-            self.PLOT_NUM += 1
-            fig = plt.figure(self.PLOT_NUM)
-            ax = plt.subplot(111)
             # Rg,Rg StDev,I(0),I(0) StDev,First point,Last point,Quality,Aggregated,
             rg_slice = slice(int(data_dict['Rg']['First point']),
                              int(data_dict['Rg']['Last point']))
-            ax.plot(data_dict['guinier']['x'][rg_slice], data_dict['guinier']['y'][rg_slice],
-                    marker='o', linestyle='None', label=data_dict['label'], linewidth=1)
             # fitting curve: ln(I(q)) = ln(I0) - Rg^2 / 3 * q^2
             fitting_curve = np.log2(data_dict['Rg']['I(0)']) \
                             - data_dict['Rg']['Rg'] ** 2 / 3 * data_dict['guinier']['x'][rg_slice]
-            ax.plot(data_dict['guinier']['x'][rg_slice], fitting_curve,
-                    label='Fitting', linewidth=1)
-            ax.set_xlabel(self.XLABEL['guinier'], fontdict=self.PLOT_LABEL)
-            ax.set_ylabel(self.YLABEL['guinier'], fontdict=self.PLOT_LABEL)
-            box = ax.get_position()
-            ax.set_position([box.x0, box.y0, box.width * 1.1, box.height])
-            lgd = ax.legend(loc=0, frameon=False, prop={'size': self.LEGEND_SIZE})
-            ax.set_title(r'Guinier Fitting (Quality={0:.2f}%, Aggregated={1:.2f}%)'.format(
+
+            self.PLOT_NUM += 1
+            fig, ax = plt.subplots(nrows=2, ncols=1)
+            ax[0].plot(data_dict['guinier']['x'][rg_slice], data_dict['guinier']['y'][rg_slice],
+                       marker='o', linestyle='None', label=data_dict['label'], linewidth=1)
+            ax[0].plot(data_dict['guinier']['x'][rg_slice], fitting_curve,
+                       label='Fitting', linewidth=1)
+            ax[0].set_xlabel(self.XLABEL['guinier'], fontdict=self.PLOT_LABEL)
+            ax[0].set_ylabel(self.YLABEL['guinier'], fontdict=self.PLOT_LABEL)
+            ax[0].set_title(r'Guinier Fitting (Quality={0:.2f}%, Aggregated={1:.2f}%)'.format(
                 data_dict['Rg']['Quality'] * 100, data_dict['Rg']['Aggregated'] * 100))
+            lgd = ax[0].legend(loc=0, frameon=False, prop={'size': self.LEGEND_SIZE})
+            ax[1].plot(data_dict['q'][rg_slice], np.log10(data_dict['I'][rg_slice]),
+                       marker='o', linestyle='None', label=data_dict['label'], linewidth=1)
+            ax[1].set_xlabel(self.XLABEL['q'], fontdict=self.PLOT_LABEL)
+            ax[1].set_ylabel(self.YLABEL['log_I'], fontdict=self.PLOT_LABEL)
+            lgd = ax[1].legend(loc=0, frameon=False, prop={'size': self.LEGEND_SIZE})
+            fig.tight_layout()
 
             # +++++++++++++++++++++ SAVE AND/OR DISPLAY +++++++++++++++++++++ #
             # if not filename:
@@ -644,7 +651,7 @@ class DifferenceAnalysis(object):
                     fig_path = os.path.join(directory, filename)
                 else:
                     fig_path = filename
-                fig.savefig(fig_path, dpi=self.DPI, bbox_extra_artists=(lgd,), bbox_inches='tight')
+                fig.savefig(fig_path, dpi=self.DPI, bbox_inches='tight')
 
         if display:
             plt.show()

@@ -46,7 +46,10 @@ def plot_DifferenceAnalysis(root_directory, from_average=False, log_intensity=Tr
     # fig.subplots_adjust()
     fig.tight_layout()
     fig_path = os.path.join(figures_directory, EXP_prefix+'_saxs_general_analysis.'+fig_format)
-    fig.savefig(fig_path, dpi=seq_obj.DPI, bbox_extra_artists=(lgd,), bbox_inches='tight')
+    try:
+        fig.savefig(fig_path, dpi=seq_obj.DPI, bbox_extra_artists=(lgd,), bbox_inches='tight')
+    except Exception as error:
+        print('Exception Information:', error.__doc__)
     if display:
         plt.show()
 
@@ -65,15 +68,18 @@ def plot_DifferenceAnalysis(root_directory, from_average=False, log_intensity=Tr
     #     plt.show()
 
     # single analysis
-    # seq_obj.plot_profiles(log_intensity=log_intensity,
-    #                       filename=EXP_prefix+'_saxs_profiles.'+fig_format,
-    #                       **kwargs)
+    seq_obj.plot_profiles(log_intensity=log_intensity,
+                          filename=EXP_prefix+'_saxs_profiles_log_scale.'+fig_format,
+                          **kwargs)
+    seq_obj.plot_profiles(log_intensity=False,
+                          filename=EXP_prefix+'_saxs_profiles.'+fig_format,
+                          **kwargs)
     # seq_obj.plot_analysis('guinier',
     #                       filename=EXP_prefix+'_saxs_guinier_analysis.'+fig_format,
     #                       **kwargs)
-    # seq_obj.plot_analysis('kratky',
-    #                       filename=EXP_prefix+'_saxs_kratky_analysis.'+fig_format,
-    #                       **kwargs)
+    seq_obj.plot_analysis('kratky',
+                          filename=EXP_prefix+'_saxs_kratky_analysis.'+fig_format,
+                          **kwargs)
     # seq_obj.plot_analysis('porod',
     #                       filename=EXP_prefix+'_saxs_porod_analysis.'+fig_format,
     #                       **kwargs)
@@ -91,17 +97,21 @@ def plot_DifferenceAnalysis(root_directory, from_average=False, log_intensity=Tr
         seq_obj.plot_pair_distribution(output_dir=os.path.join(root_directory, 'Gnom_output'),
                                        filename=EXP_prefix+'_pair_distribution.'+fig_format,
                                        **kwargs)
+    except AssertionError:
+        print('Warning: couldn\'t find radius of gyration for some dat files')
     except Exception as error:
-        print(error.__doc__)
+        raise(error)
+        print('Exception Information:', error.__doc__)
     finally:
         plt.close('all')
-    # try:
-    #     seq_obj.plot_guinier_fitting(display=display, save=True,
-    #                                  directory=os.path.join(figures_directory, 'guinier_fitting'))
-    # except Exception as error:
-    #     print(error.__doc__)
-    # finally:
-    #     plt.close('all')
+    try:
+        seq_obj.plot_guinier_fitting(display=display, save=True,
+                                     directory=os.path.join(figures_directory, 'guinier_fitting'))
+    except Exception as error:
+        raise(error)
+        print('Exception Information:', error.__doc__)
+    finally:
+        plt.close('all')
 
 
 def main():
