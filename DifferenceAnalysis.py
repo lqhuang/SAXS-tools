@@ -1,5 +1,6 @@
 import os
 import glob
+from cycler import cycler
 
 import numpy as np
 from matplotlib import pyplot as plt
@@ -77,20 +78,19 @@ class DifferenceAnalysis(object):
 
     plt.rcParams['mathtext.fontset'] = 'cm'
     plt.rcParams['mathtext.rm'] = 'serif'
+    # plt.rcParams['axes.formatter.limits'] = (-3, 4)
     # plt.rcParams['xtick.direction'] = 'in'
     # plt.rcParams['ytick.direction'] = 'in'
+    # plt.rcParams['axes.autolimit_mode'] = 'round_numbers'
+    # plt.rcParams['axes.xmargin'] = 0
+    # plt.rcParams['axes.ymargin'] = 0
+    plt.rcParams['axes.prop_cycle'] = cycler(color='bgrcmyk')
+
     PLOT_LABEL = {'family': 'sans-serif',
                   'weight': 'normal',
                   'size': 14}
     plt.rc('font', **PLOT_LABEL)
     plt.rc('text', **{'latex.unicode': True})
-
-    # plt.rcParams['axes.autolimit_mode'] = 'round_numbers'
-    # plt.rcParams['axes.xmargin'] = 0
-    # plt.rcParams['axes.ymargin'] = 0
-
-    from cycler import cycler
-    plt.rcParams['axes.prop_cycle'] = cycler(color='bgrcmyk')
 
     LEGEND_SIZE = 12
     DPI = 300
@@ -380,14 +380,13 @@ class DifferenceAnalysis(object):
 
     # ----------------------- PLOT ------------------------#
     def plot_profiles(self, log_intensity=True, dash_line_index=(None,),
-                      crop=False, crop_qmin=0.0, crop_qmax=-1.0,
+                      crop=True, crop_qmin=0.0, crop_qmax=-1.0,
                       display=True, save=False, filename=None, legend_loc='left', directory=None,
                       axes=None):
         """
         SAXS Profiles
         """
         self.PLOT_NUM += 1
-
         # +++++++++++++++++++ CALCULATE INTENSITY +++++++++++++++++++++++ #
         intensity_key = 'I'
         if log_intensity:
@@ -506,7 +505,7 @@ class DifferenceAnalysis(object):
 
     def plot_difference(self, difference,
                         crop=False, crop_qmin=0.0, crop_qmax=-1.0,
-                        baseline_index=0, baseline_dat=None, dash_line_index=(None,),
+                        baseline_index=1, baseline_dat=None, dash_line_index=(None,),
                         display=True, save=False, filename=None, legend_loc='left', directory=None,
                         axes=None):
         """
