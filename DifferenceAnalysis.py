@@ -259,7 +259,7 @@ class DifferenceAnalysis(object):
             file_list.append(output)
         return file_list, skip
 
-    def calc_radius_of_gyration(self, options='', crop=True, del_cropped=True):
+    def calc_radius_of_gyration(self, options='', crop=True, del_cropped=False):
         """
         autorg:
         output for csv support:
@@ -282,21 +282,26 @@ class DifferenceAnalysis(object):
         autorg = 'autorg {0} {1} --mininterval {2} {3}'.format(
             ' '.join(file_list), output_format, mininterval, options)
         log = run_system_command(autorg).splitlines()
-        assert self.num_curves == len(log) - 1
-        rg_keys = log[0].split(',')
-        # undone: skip 'File' information
-        for i, data_dict in enumerate(self.data_dict_list):
-            data_dict['Rg'] = dict()
-            data_dict['Rg']['skip'] = skip[i-1]  # skip points due to cropping
-            rg_data = log[i+1].split(',')  # first line (idx=0) is key map.
-            for j, key in enumerate(rg_keys):
-                try:
-                    data_dict['Rg'][key] = float(rg_data[j])
-                except ValueError:
-                    data_dict['Rg'][key] = rg_data[j]
         if crop and del_cropped:
             for cropped_file in file_list:
                 os.remove(cropped_file)
+        rg_keys = log[0].split(',')
+        log_line = 0
+        for i, data_dict in enumerate(self.data_dict_list):
+            rg_data = log[log_line+1].split(',')  # first line (idx=0) is key map.
+            # compare 'File' information to avoid 'No Rg found for ***'
+            if rg_data[0] == file_list[i]:
+                log_line += 1  # move to next line
+                data_dict['Rg'] = dict()
+                data_dict['Rg']['skip'] = skip[i-1]  # skip points due to cropping
+                for j, key in enumerate(rg_keys):
+                    # undone: do not record 'File' information
+                    try:
+                        data_dict['Rg'][key] = float(rg_data[j])
+                    except ValueError:
+                        data_dict['Rg'][key] = rg_data[j]
+            else:
+                data_dict['Rg'] = None
 
     def calc_pair_distribution(self, output_dir='.', options='', rg_options=''):
         """
@@ -313,17 +318,21 @@ class DifferenceAnalysis(object):
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
         for data_dict in self.data_dict_list:
-            rg = data_dict['Rg']['Rg']
-            if data_dict['filename'].endswith('.dat'):
-                output_name = os.path.join(output_dir, data_dict['filename'][:-4] + '.out')
+            if data_dict['Rg'] is None:
+                data_dict['pair_distribution'] = None
             else:
-                print('Warning: {0} file do not end with .dat format'.format(data_dict['filename']))
-                output_name = os.path.join(output_dir, data_dict['filename']+'.out')
-            skip = sum(data_dict['q'] < 0.010) + 1 # ignore q < 0.010 (1/angstrom)
-            datgnom = 'datgnom4 {0} --rg {1} --output {2} --skip {3} {4}'.format(
-                data_dict['filepath'], rg, output_name, skip, options)
-            log = run_system_command(datgnom)
-            data_dict['pair_distribution'] = gnom.parse_gnom_file(output_name)
+                rg = data_dict['Rg']['Rg']
+                if data_dict['filename'].endswith('.dat'):
+                    output_name = os.path.join(output_dir, data_dict['filename'][:-4] + '.out')
+                else:
+                    print('Warning: {0} file do not end with .dat format'.format(
+                        data_dict['filename']))
+                    output_name = os.path.join(output_dir, data_dict['filename']+'.out')
+                skip = sum(data_dict['q'] < 0.010) + 1 # ignore q < 0.010 (1/angstrom)
+                datgnom = 'datgnom4 {0} --rg {1} --output {2} --skip {3} {4}'.format(
+                    data_dict['filepath'], rg, output_name, skip, options)
+                run_system_command(datgnom)
+                data_dict['pair_distribution'] = gnom.parse_gnom_file(output_name)
 
     def calc_guinier(self):
         """
@@ -565,9 +574,9 @@ class DifferenceAnalysis(object):
         # +++++++++++++++++++++ CALCULATE PDF +++++++++++++++++++++++++++ #
         if 'pair_distribution' not in self.data_dict_keys():
             self.calc_pair_distribution(output_dir=output_dir)
-        print(self.data_dict_list[0]['Rg']['Rg'])
-        print(self.data_dict_list[0]['pair_distribution']['reciprocal_rg'])
-        print(self.data_dict_list[0]['pair_distribution']['real_rg'])
+        # print(self.data_dict_list[0]['Rg']['Rg'])
+        # print(self.data_dict_list[0]['pair_distribution']['reciprocal_rg'])
+        # print(self.data_dict_list[0]['pair_distribution']['real_rg'])
 
         # ++++++++++++++++++++++++++++++ PLOT +++++++++++++++++++++++++++ #
         self.update_linestyle(dash_line_index=dash_line_index)
@@ -577,10 +586,11 @@ class DifferenceAnalysis(object):
             fig = plt.figure(self.PLOT_NUM)
             ax = plt.subplot(111)
         for data_dict in self.data_dict_list:
-            ax.plot(data_dict['pair_distribution']['r'], data_dict['pair_distribution']['pr'],
-                    label=r'{0} $D_{{max}}={1:.2f}$'.format(
-                        data_dict['label'], data_dict['pair_distribution']['Dmax']),
-                    linestyle=data_dict['linestyle'], linewidth=1)
+            if data_dict['pair_distribution'] is not None:
+                ax.plot(data_dict['pair_distribution']['r'], data_dict['pair_distribution']['pr'],
+                        label=r'{0} $D_{{max}}={1:.2f}$'.format(
+                            data_dict['label'], data_dict['pair_distribution']['Dmax']),
+                        linestyle=data_dict['linestyle'], linewidth=1)
         ax.set_xlabel(r'$r$ $(\mathrm{\AA})$', fontdict=self.PLOT_LABEL)
         ax.set_ylabel(r'$P(r)$', fontdict=self.PLOT_LABEL)
         ax.set_title(r'Pair Distribution Function')
@@ -628,42 +638,43 @@ class DifferenceAnalysis(object):
         # ++++++++++++++++++++++++++++++ PLOT +++++++++++++++++++++++++++ #
         for data_dict in self.data_dict_list:
             # Rg,Rg StDev,I(0),I(0) StDev,First point,Last point,Quality,Aggregated,
-            rg_skip = data_dict['Rg']['skip']  # skip points
-            rg_slice = slice(rg_skip + int(data_dict['Rg']['First point']) - 1,
-                             rg_skip + int(data_dict['Rg']['Last point']))
-            # fitting curve: ln(I(q)) = ln(I0) - Rg^2 / 3 * q^2
-            fitting_curve = np.log2(data_dict['Rg']['I(0)']) \
-                            - data_dict['Rg']['Rg'] ** 2 / 3 * data_dict['guinier']['x'][rg_slice]
+            if data_dict['Rg'] is not None:
+                rg_skip = data_dict['Rg']['skip']  # skip points
+                rg_slice = slice(rg_skip + int(data_dict['Rg']['First point']) - 1,
+                                 rg_skip + int(data_dict['Rg']['Last point']))
+                # fitting curve: ln(I(q)) = ln(I0) - Rg^2 / 3 * q^2
+                fitting_curve = np.log2(data_dict['Rg']['I(0)']) \
+                                - data_dict['Rg']['Rg'] ** 2 / 3 * data_dict['guinier']['x'][rg_slice]
 
-            self.PLOT_NUM += 1
-            fig, ax = plt.subplots(nrows=2, ncols=1)
-            ax[0].plot(data_dict['guinier']['x'][rg_slice], data_dict['guinier']['y'][rg_slice],
-                       marker='o', linestyle='None', label=data_dict['label'], linewidth=1)
-            ax[0].plot(data_dict['guinier']['x'][rg_slice], fitting_curve,
-                       label='Fitting', linewidth=1)
-            ax[0].set_xlabel(self.XLABEL['guinier'], fontdict=self.PLOT_LABEL)
-            ax[0].set_ylabel(self.YLABEL['guinier'], fontdict=self.PLOT_LABEL)
-            ax[0].set_title(r'Guinier Fitting (Quality={0:.2f}%, Aggregated={1:.2f}%)'.format(
-                data_dict['Rg']['Quality'] * 100, data_dict['Rg']['Aggregated'] * 100))
-            ax[0].legend(loc=0, frameon=False, prop={'size': self.LEGEND_SIZE-2})
-            ax[1].plot(data_dict['q'][rg_slice], np.log10(data_dict['I'][rg_slice]),
-                       marker='o', linestyle='None', label=data_dict['label'], linewidth=1)
-            ax[1].set_xlabel(self.XLABEL['q'], fontdict=self.PLOT_LABEL)
-            ax[1].set_ylabel(self.YLABEL['log_I'], fontdict=self.PLOT_LABEL)
-            ax[1].legend(loc=0, frameon=True, prop={'size': self.LEGEND_SIZE-2})
-            fig.tight_layout()
+                self.PLOT_NUM += 1
+                fig, ax = plt.subplots(nrows=2, ncols=1)
+                ax[0].plot(data_dict['guinier']['x'][rg_slice], data_dict['guinier']['y'][rg_slice],
+                           marker='o', linestyle='None', label=data_dict['label'], linewidth=1)
+                ax[0].plot(data_dict['guinier']['x'][rg_slice], fitting_curve,
+                           label='Fitting', linewidth=1)
+                ax[0].set_xlabel(self.XLABEL['guinier'], fontdict=self.PLOT_LABEL)
+                ax[0].set_ylabel(self.YLABEL['guinier'], fontdict=self.PLOT_LABEL)
+                ax[0].set_title(r'Guinier Fitting (Quality={0:.2f}%, Aggregated={1:.2f}%)'.format(
+                    data_dict['Rg']['Quality'] * 100, data_dict['Rg']['Aggregated'] * 100))
+                ax[0].legend(loc=0, frameon=False, prop={'size': self.LEGEND_SIZE-2})
+                ax[1].plot(data_dict['q'][rg_slice], np.log10(data_dict['I'][rg_slice]),
+                           marker='o', linestyle='None', label=data_dict['label'], linewidth=1)
+                ax[1].set_xlabel(self.XLABEL['q'], fontdict=self.PLOT_LABEL)
+                ax[1].set_ylabel(self.YLABEL['log_I'], fontdict=self.PLOT_LABEL)
+                ax[1].legend(loc=0, frameon=True, prop={'size': self.LEGEND_SIZE-2})
+                fig.tight_layout()
 
-            # +++++++++++++++++++++ SAVE AND/OR DISPLAY +++++++++++++++++++++ #
-            # if not filename:
-            filename = 'guinier_fitting_{0}.png'.format(data_dict['label'].replace(' ', '_'))
-            if save:
-                if directory:
-                    if not os.path.exists(directory):
-                        os.mkdir(directory)
-                    fig_path = os.path.join(directory, filename)
-                else:
-                    fig_path = filename
-                fig.savefig(fig_path, dpi=self.DPI, bbox_inches='tight')
+                # +++++++++++++++++++++ SAVE AND/OR DISPLAY +++++++++++++++++++++ #
+                # if not filename:
+                filename = 'guinier_fitting_{0}.png'.format(data_dict['label'].replace(' ', '_'))
+                if save:
+                    if directory:
+                        if not os.path.exists(directory):
+                            os.mkdir(directory)
+                        fig_path = os.path.join(directory, filename)
+                    else:
+                        fig_path = filename
+                    fig.savefig(fig_path, dpi=self.DPI, bbox_inches='tight')
 
         if display:
             plt.show()

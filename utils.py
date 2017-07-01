@@ -8,9 +8,12 @@ from difflib import SequenceMatcher
 def run_system_command(command_string):
     """Function used to run the system command and return the log"""
     process = subprocess.Popen(shlex.split(command_string),
-                               stdout=subprocess.PIPE)  # Run system command
-    output = process.communicate()  # Get the log.
-    return output[0].decode('utf-8')  # return the log file
+                               stdout=subprocess.PIPE,
+                               stderr=subprocess.PIPE)  # Run system command
+    output, error = process.communicate()  # Get the log.
+    if error is not None:
+        print(error.decode('utf-8'))
+    return output.decode('utf-8')  # return the log file
 
 
 def str2bool(para):

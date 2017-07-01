@@ -73,7 +73,8 @@ def plot_DifferenceAnalysis(root_directory, from_average=False, log_intensity=Tr
     #     plt.show()
 
     # single analysis
-    seq_obj.plot_profiles(log_intensity=log_intensity,
+    seq_obj.plot_profiles(log_intensity=True,
+                          crop=crop, crop_qmin=crop_qmin, crop_qmax=crop_qmax,
                           filename=exp_prefix+'_saxs_profiles_log_scale.'+fig_format,
                           **kwargs)
     seq_obj.plot_profiles(log_intensity=False,
