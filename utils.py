@@ -7,9 +7,9 @@ from difflib import SequenceMatcher
 
 def run_system_command(command_string):
     """Function used to run the system command and return the log"""
-    process = subprocess.Popen(shlex.split(command_string),
-                               stdout=subprocess.PIPE,
-                               stderr=subprocess.PIPE)  # Run system command
+    process = subprocess.Popen(shlex.split(command_string),  # Run system command
+                               stdout=subprocess.PIPE)
+                            #    stderr=subprocess.PIPE)
     output, error = process.communicate()  # Get the log.
     if error is not None:
         print(error.decode('utf-8'))
@@ -40,8 +40,8 @@ def find_common_string(a, b):
 
 def print_arguments(args_dict):
     if 'root_directory' in args_dict.keys():
-        exp_base = os.path.basename(args_dict['root_directory'])
-    print('Input parameters for ' + str(exp_base) + ' are:')
+        exp_base = os.path.basename(os.path.realpath(args_dict['root_directory']))
+    print('Input parameters for {} are:'.format(exp_base))
     for (key, value) in args_dict.items():
-        print(key, ':', value)
+        print('{0}: {1}'.format(key, value))
     print('Processing now')

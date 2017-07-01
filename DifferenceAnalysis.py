@@ -259,7 +259,7 @@ class DifferenceAnalysis(object):
             file_list.append(output)
         return file_list, skip
 
-    def calc_radius_of_gyration(self, options='', crop=True, del_cropped=False):
+    def calc_radius_of_gyration(self, options='', crop=True, del_cropped=True):
         """
         autorg:
         output for csv support:
@@ -285,22 +285,32 @@ class DifferenceAnalysis(object):
         if crop and del_cropped:
             for cropped_file in file_list:
                 os.remove(cropped_file)
-        rg_keys = log[0].split(',')
-        log_line = 0
-        for i, data_dict in enumerate(self.data_dict_list):
-            rg_data = log[log_line+1].split(',')  # first line (idx=0) is key map.
-            # compare 'File' information to avoid 'No Rg found for ***'
-            if rg_data[0] == file_list[i]:
-                log_line += 1  # move to next line
-                data_dict['Rg'] = dict()
-                data_dict['Rg']['skip'] = skip[i-1]  # skip points due to cropping
-                for j, key in enumerate(rg_keys):
-                    # undone: do not record 'File' information
-                    try:
-                        data_dict['Rg'][key] = float(rg_data[j])
-                    except ValueError:
-                        data_dict['Rg'][key] = rg_data[j]
-            else:
+        if len(log) != 1:
+            self.rg_found = True
+            rg_keys = log[0].split(',')
+            log_line = 0  # as a pointer to move during log.
+            for i, data_dict in enumerate(self.data_dict_list):
+                try:
+                    rg_data = log[log_line+1].split(',')  # first line (idx=0) is key map.
+                except IndexError:  # out of boundary. all the rest is no found 'Rg'.
+                    data_dict['Rg'] = None
+                    continue
+                # compare 'File' information to avoid 'No Rg found for ***'
+                if rg_data[0] == file_list[i]:
+                    log_line += 1  # move to next line
+                    data_dict['Rg'] = dict()
+                    data_dict['Rg']['skip'] = skip[i-1]  # skip points due to cropping
+                    for j, key in enumerate(rg_keys):
+                        # undone: do not record 'File' information
+                        try:
+                            data_dict['Rg'][key] = float(rg_data[j])
+                        except ValueError:
+                            data_dict['Rg'][key] = rg_data[j]
+                else:
+                    data_dict['Rg'] = None
+        else:
+            self.rg_found = False
+            for data_dict in self.data_dict_list:
                 data_dict['Rg'] = None
 
     def calc_pair_distribution(self, output_dir='.', options='', rg_options=''):
@@ -315,24 +325,25 @@ class DifferenceAnalysis(object):
         """
         if 'Rg' not in self.data_dict_keys():
             self.calc_radius_of_gyration(options=rg_options)
-        if not os.path.exists(output_dir):
-            os.makedirs(output_dir)
-        for data_dict in self.data_dict_list:
-            if data_dict['Rg'] is None:
-                data_dict['pair_distribution'] = None
-            else:
-                rg = data_dict['Rg']['Rg']
-                if data_dict['filename'].endswith('.dat'):
-                    output_name = os.path.join(output_dir, data_dict['filename'][:-4] + '.out')
+        if self.rg_found:
+            if not os.path.exists(output_dir):
+                os.makedirs(output_dir)
+            for data_dict in self.data_dict_list:
+                if data_dict['Rg'] is None:
+                    data_dict['pair_distribution'] = None
                 else:
-                    print('Warning: {0} file do not end with .dat format'.format(
-                        data_dict['filename']))
-                    output_name = os.path.join(output_dir, data_dict['filename']+'.out')
-                skip = sum(data_dict['q'] < 0.010) + 1 # ignore q < 0.010 (1/angstrom)
-                datgnom = 'datgnom4 {0} --rg {1} --output {2} --skip {3} {4}'.format(
-                    data_dict['filepath'], rg, output_name, skip, options)
-                run_system_command(datgnom)
-                data_dict['pair_distribution'] = gnom.parse_gnom_file(output_name)
+                    rg = data_dict['Rg']['Rg']
+                    if data_dict['filename'].endswith('.dat'):
+                        output_name = os.path.join(output_dir, data_dict['filename'][:-4] + '.out')
+                    else:
+                        print('Warning: {0} file do not end with .dat format'.format(
+                            data_dict['filename']))
+                        output_name = os.path.join(output_dir, data_dict['filename']+'.out')
+                    skip = sum(data_dict['q'] < 0.010) + 1 # ignore q < 0.010 (1/angstrom)
+                    datgnom = 'datgnom4 {0} --rg {1} --output {2} --skip {3} {4}'.format(
+                        data_dict['filepath'], rg, output_name, skip, options)
+                    run_system_command(datgnom)
+                    data_dict['pair_distribution'] = gnom.parse_gnom_file(output_name)
 
     def calc_guinier(self):
         """
@@ -577,51 +588,55 @@ class DifferenceAnalysis(object):
         # print(self.data_dict_list[0]['Rg']['Rg'])
         # print(self.data_dict_list[0]['pair_distribution']['reciprocal_rg'])
         # print(self.data_dict_list[0]['pair_distribution']['real_rg'])
+        # undone: check rg value between autorg and datgnom4
 
-        # ++++++++++++++++++++++++++++++ PLOT +++++++++++++++++++++++++++ #
-        self.update_linestyle(dash_line_index=dash_line_index)
-        if axes:
-            ax = axes
+        if self.rg_found:
+            # ++++++++++++++++++++++++++++++ PLOT +++++++++++++++++++++++++++ #
+            self.update_linestyle(dash_line_index=dash_line_index)
+            if axes:
+                ax = axes
+            else:
+                fig = plt.figure(self.PLOT_NUM)
+                ax = plt.subplot(111)
+            for data_dict in self.data_dict_list:
+                if data_dict['pair_distribution'] is not None:
+                    ax.plot(data_dict['pair_distribution']['r'], data_dict['pair_distribution']['pr'],
+                            label=r'{0} $D_{{max}}={1:.2f}$'.format(
+                                data_dict['label'], data_dict['pair_distribution']['Dmax']),
+                            linestyle=data_dict['linestyle'], linewidth=1)
+            ax.set_xlabel(r'$r$ $(\mathrm{\AA})$', fontdict=self.PLOT_LABEL)
+            ax.set_ylabel(r'$P(r)$', fontdict=self.PLOT_LABEL)
+            ax.set_title(r'Pair Distribution Function')
+            ylim = ax.get_ylim()
+            ax.set_ylim([0, ylim[1]])
+            if not axes:
+                box = ax.get_position()
+                ax.set_position([box.x0, box.y0, box.width * 1.1, box.height])
+                if 'left' in legend_loc:
+                    lgd = ax.legend(loc='center left', bbox_to_anchor=(1, 0.5),
+                                    frameon=False, prop={'size': self.LEGEND_SIZE})
+                elif 'down' in legend_loc:
+                    lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15),
+                                    frameon=False, prop={'size': self.LEGEND_SIZE})
+
+            # +++++++++++++++++++++ SAVE AND/OR DISPLAY +++++++++++++++++++++ #
+            if not filename:
+                filename = 'pair_distribution.png'
+            if not axes:
+                if save:
+                    if directory:
+                        if not os.path.exists(directory):
+                            os.mkdir(directory)
+                        fig_path = os.path.join(directory, filename)
+                    else:
+                        fig_path = filename
+                    fig.savefig(fig_path, dpi=self.DPI, bbox_extra_artists=(lgd,), bbox_inches='tight')
+                if display:
+                    # ax.legend().draggable()
+                    # fig.tight_layout()
+                    plt.show()
         else:
-            fig = plt.figure(self.PLOT_NUM)
-            ax = plt.subplot(111)
-        for data_dict in self.data_dict_list:
-            if data_dict['pair_distribution'] is not None:
-                ax.plot(data_dict['pair_distribution']['r'], data_dict['pair_distribution']['pr'],
-                        label=r'{0} $D_{{max}}={1:.2f}$'.format(
-                            data_dict['label'], data_dict['pair_distribution']['Dmax']),
-                        linestyle=data_dict['linestyle'], linewidth=1)
-        ax.set_xlabel(r'$r$ $(\mathrm{\AA})$', fontdict=self.PLOT_LABEL)
-        ax.set_ylabel(r'$P(r)$', fontdict=self.PLOT_LABEL)
-        ax.set_title(r'Pair Distribution Function')
-        ylim = ax.get_ylim()
-        ax.set_ylim([0, ylim[1]])
-        if not axes:
-            box = ax.get_position()
-            ax.set_position([box.x0, box.y0, box.width * 1.1, box.height])
-            if 'left' in legend_loc:
-                lgd = ax.legend(loc='center left', bbox_to_anchor=(1, 0.5),
-                                frameon=False, prop={'size': self.LEGEND_SIZE})
-            elif 'down' in legend_loc:
-                lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15),
-                                frameon=False, prop={'size': self.LEGEND_SIZE})
-
-        # +++++++++++++++++++++ SAVE AND/OR DISPLAY +++++++++++++++++++++ #
-        if not filename:
-            filename = 'pair_distribution.png'
-        if not axes:
-            if save:
-                if directory:
-                    if not os.path.exists(directory):
-                        os.mkdir(directory)
-                    fig_path = os.path.join(directory, filename)
-                else:
-                    fig_path = filename
-                fig.savefig(fig_path, dpi=self.DPI, bbox_extra_artists=(lgd,), bbox_inches='tight')
-            if display:
-                # ax.legend().draggable()
-                # fig.tight_layout()
-                plt.show()
+            print('Warning: Do not find any pair distribution function.')
 
     def plot_guinier_fitting(self,
                              display=True, save=False, filename=None, directory=None):
@@ -676,5 +691,5 @@ class DifferenceAnalysis(object):
                         fig_path = filename
                     fig.savefig(fig_path, dpi=self.DPI, bbox_inches='tight')
 
-        if display:
+        if display and self.rg_found:
             plt.show()

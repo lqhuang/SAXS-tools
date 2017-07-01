@@ -51,10 +51,7 @@ def plot_DifferenceAnalysis(root_directory, from_average=False, log_intensity=Tr
     # fig.subplots_adjust()
     fig.tight_layout()
     fig_path = os.path.join(figures_directory, exp_prefix+'_saxs_general_analysis.'+fig_format)
-    try:
-        fig.savefig(fig_path, dpi=seq_obj.DPI, bbox_extra_artists=(lgd,), bbox_inches='tight')
-    except Exception as error:
-        print('Exception Information:', error.__doc__)
+    fig.savefig(fig_path, dpi=seq_obj.DPI, bbox_extra_artists=(lgd,), bbox_inches='tight')
     if display:
         plt.show()
 
@@ -106,8 +103,6 @@ def plot_DifferenceAnalysis(root_directory, from_average=False, log_intensity=Tr
         seq_obj.plot_pair_distribution(output_dir=os.path.join(root_directory, 'Gnom_output'),
                                        filename=exp_prefix+'_pair_distribution.'+fig_format,
                                        **kwargs)
-    except AssertionError:
-        print('Warning: couldn\'t find radius of gyration for some dat files')
     except Exception as error:
         print('Exception Information:', error.__doc__)
         raise(error)
