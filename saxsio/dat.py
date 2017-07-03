@@ -60,6 +60,8 @@ def load_dat(filepath):
     qs = np.asarray(qs)
     Is = np.asarray(Is)
     Es = np.asarray(Es)
+    if len(qs) <= 1:
+        raise(NotImplementedError('Unsupportted dat file. Please check again'))
     return qs, Is, Es
 
 def load_RAW_dat(filepath):
@@ -91,6 +93,8 @@ def load_RAW_dat(filepath):
     qs = np.asarray(qs)
     Is = np.asarray(Is)
     Es = np.asarray(Es)
+    if len(qs) <= 1:
+        raise(NotImplementedError('Unsupportted RAW dat file. Please check again'))
     return qs, Is, Es
 
 def write_dat(filepath, RAW_dat, extra_info=None):
@@ -172,12 +176,13 @@ def scale_curve(curve, ref_curve, qmin=0.0, qmax=-1.0, stat_func=np.sum,
     assert len(ref_curve) == 2
     curve_q, curve_I = curve[0], curve[1]
     ref_q, ref_I = ref_curve[0], ref_curve[1]
-    assert len(curve_q) == len(ref_q)
     if qmax < 0:
-        scale_idx = curve_q > qmin
+        curve_scale_idx = curve_q > qmin
+        ref_scale_idx = ref_q > qmin
     else:
-        scale_idx = np.logical_and(curve_q >= qmin, curve_q < qmax)
-    scaling_factor =  stat_func(ref_I[scale_idx]) / stat_func(curve_I[scale_idx])
+        curve_scale_idx = np.logical_and(curve_q >= qmin, curve_q < qmax)
+        ref_scale_idx = np.logical_and(ref_q >= qmin, ref_q < qmax)
+    scaling_factor =  stat_func(ref_I[ref_scale_idx]) / stat_func(curve_I[curve_scale_idx])
     # print("scaling_factor is ", str(scaling_factor)[0:6])
     scaling_I = scaling_factor * curve_I
     if inc_factor:

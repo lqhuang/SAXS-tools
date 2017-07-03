@@ -22,13 +22,21 @@ def plot_DifferenceAnalysis(root_directory, from_average=False, log_intensity=Tr
             scale=scale, ref_dat=None, scale_qmin=scale_qmin, scale_qmax=scale_qmax)
     else:
         try:
-            seq_obj = DifferenceAnalysis.from_subtracted_dats(os.path.join(file_location, 'S_*'),
-                                                              smooth=smooth)
-        except FileNotFoundError:
-            print('Warning: Do not find subtracted curves, try to read data from average curves.')
-            seq_obj = DifferenceAnalysis.from_average_dats(
-                os.path.join(file_location, 'A_*'), smooth=smooth,
+            seq_obj = DifferenceAnalysis.from_subtracted_dats(
+                os.path.join(file_location, 'S_*'), smooth=smooth,
                 scale=scale, ref_dat=None, scale_qmin=scale_qmin, scale_qmax=scale_qmax)
+        except FileNotFoundError:
+            try:
+                print('Warning: Do not find subtracted curves. Try to read data from average curves.')
+                seq_obj = DifferenceAnalysis.from_average_dats(
+                    os.path.join(file_location, 'A_*'), smooth=smooth,
+                    scale=scale, ref_dat=None, scale_qmin=scale_qmin, scale_qmax=scale_qmax)
+            except FileNotFoundError:
+                print('Warning: Do not find average curves.')
+                print('Try to read data from curves with other names (subtracted curves).')
+                seq_obj = DifferenceAnalysis.from_subtracted_dats(
+                    os.path.join(file_location, '*'), smooth=smooth,
+                    scale=scale, ref_dat=None, scale_qmin=scale_qmin, scale_qmax=scale_qmax)
 
     kwargs = {'display': display, 'save': save_figures, 'directory': figures_directory,
               'legend_loc': legend_loc, 'dash_line_index': dash_line_index}

@@ -1,6 +1,7 @@
 import os
 import glob
 from cycler import cycler
+import copy
 
 import numpy as np
 from matplotlib import pyplot as plt
@@ -22,10 +23,13 @@ def get_data_dict(dat_file, smooth=False):
         start = -2
     data_dict['label'] = filename[start+2:].replace('.dat', '').replace('_', ' ')
     data_dict['linestyle'] = '-'
-    q, intensity, error = dat.load_RAW_dat(dat_file)
+    try:
+        q, intensity, error = dat.load_RAW_dat(dat_file)
+    except NotImplementedError:
+        q, intensity, error = dat.load_dat(dat_file)
     data_dict['q'] = q
     if smooth:
-        data_dict['I'] = dat.smooth_curve(intensity)
+        data_dict['I'] = dat.smooth_curve(intensity, window_length=25, polyorder=5)
     else:
         data_dict['I'] = intensity
     data_dict['E'] = error
@@ -174,7 +178,7 @@ class DifferenceAnalysis(object):
 
     @classmethod
     def from_subtracted_dats(self, subtracted_dat_location, smooth=False,
-                             from_average=True):
+                             scale=False, ref_dat=None, scale_qmin=0.0, scale_qmax=-1.0):
         # glob files
         subtracted_dat_list = glob.glob(subtracted_dat_location)
         if len(subtracted_dat_list) == 0:
@@ -182,18 +186,43 @@ class DifferenceAnalysis(object):
         # read data
         data_dict_list = [get_data_dict(dat_file, smooth=smooth) \
                           for dat_file in subtracted_dat_list]
+        if scale:
+            if ref_dat:
+                ref_q, ref_I, _ = get_data_dict(ref_dat)
+            else:
+                ref_q = copy.deepcopy(data_dict_list[0]['q'])
+                ref_I = copy.deepcopy(data_dict_list[0]['I'])
+            for data_dict in data_dict_list:
+                data_dict['I'], data_dict['scaling_factor'] = \
+                    dat.scale_curve((data_dict['q'], data_dict['I']), (ref_q, ref_I),
+                                    qmin=scale_qmin, qmax=scale_qmax, inc_factor=True)
+                print('For {0} file, the scaling factor is {1}'.format(
+                    data_dict['filename'], data_dict['scaling_factor']))
         cls = DifferenceAnalysis(data_dict_list, file_list=subtracted_dat_list)
         return cls
 
     @classmethod
-    def from_dats_list(self, dats_list, from_average=False):
+    def from_dats_list(self, dats_list, smooth=False,
+                       scale=False, ref_dat=None, scale_qmin=0.0, scale_qmax=-1.0):
         # glob files
         file_list = dats_list
         if len(file_list) == 0:
             raise FileNotFoundError('Do not find dat files')
         # read data
         # Notice that here is no option !
-        data_dict_list = [get_data_dict(dat_file) for dat_file in file_list]
+        data_dict_list = [get_data_dict(dat_file, smooth=smooth) for dat_file in file_list]
+        if scale:
+            if ref_dat:
+                ref_q, ref_I, _ = get_data_dict(ref_dat)
+            else:
+                ref_q = copy.deepcopy(data_dict_list[0]['q'])
+                ref_I = copy.deepcopy(data_dict_list[0]['I'])
+            for data_dict in data_dict_list:
+                data_dict['I'], data_dict['scaling_factor'] = \
+                    dat.scale_curve((data_dict['q'], data_dict['I']), (ref_q, ref_I),
+                                    qmin=scale_qmin, qmax=scale_qmax, inc_factor=True)
+                print('For {0} file, the scaling factor is {1}'.format(
+                    data_dict['filename'], data_dict['scaling_factor']))
         cls = DifferenceAnalysis(data_dict_list, file_list=file_list)
         return cls
 
@@ -220,20 +249,42 @@ class DifferenceAnalysis(object):
 
     def calc_relative_diff(self, baseline_index=1, baseline_dat=None):
         if not baseline_dat:
-            baseline_dict = self.data_dict_list[baseline_index-1]
+            baseline_dict = copy.deepcopy(self.data_dict_list[baseline_index-1])
         else:
             baseline_dict = get_data_dict(baseline_dat)
+        base_q_length = baseline_dict['q'].shape[0]
         for data_dict in self.data_dict_list:
-            data_dict['relative_diff'] = (data_dict['I'] - baseline_dict['I']) / baseline_dict['I']
-            data_dict['relative_diff'] *= 100
+            if data_dict['q'].shape[0] == base_q_length:
+                data_dict['relative_diff'] = (data_dict['I'] - baseline_dict['I']) / baseline_dict['I']
+                data_dict['relative_diff'] *= 100
+            else:
+                # length of difference should be the same with length of q(for plotting figures)
+                # hence interpolate baseline instead of data dat.
+                print('Warning: 1D length of two dat files {0} and {1} is different. ' \
+                      'Try to interpolate curve to get difference.'.format(
+                          data_dict['filename'], baseline_dict['filename']))
+                baseline_interp_I = np.interp(data_dict['q'], baseline_dict['q'], baseline_dict['I'])
+                data_dict['relative_diff'] = (data_dict['I']-baseline_interp_I) / baseline_interp_I
+                data_dict['relative_diff'] *= 100
+
 
     def calc_absolute_diff(self, baseline_index=1, baseline_dat=None):
         if not baseline_dat:
-            baseline_dict = self.data_dict_list[baseline_index-1]
+            baseline_dict = copy.deepcopy(self.data_dict_list[baseline_index-1])
         else:
             baseline_dict = get_data_dict(baseline_dat)
+        base_q_length = baseline_dict['q'].shape[0]
         for data_dict in self.data_dict_list:
-            data_dict['absolute_diff'] = data_dict['I'] - baseline_dict['I']
+            if data_dict['q'].shape[0] == base_q_length:
+                data_dict['absolute_diff'] = data_dict['I'] - baseline_dict['I']
+            else:
+                # length of difference should be the same with length of q(for plotting figures)
+                # hence interpolate baseline instead of data dat.
+                print('Warning: 1D length of two dat files {0} and {1} is different. ' \
+                      'Try to interpolate curve to get difference.'.format(
+                          data_dict['filename'], baseline_dict['filename']))
+                baseline_interp_I = np.interp(data_dict['q'], baseline_dict['q'], baseline_dict['I'])
+                data_dict['absolute_diff'] = data_dict['I'] - baseline_interp_I
 
     def eval_datcrop(self, qmin, qmax):
         """
@@ -380,7 +431,7 @@ class DifferenceAnalysis(object):
 
     # ----------------------- PLOT ------------------------#
     def plot_profiles(self, log_intensity=True, dash_line_index=(None,),
-                      crop=True, crop_qmin=0.0, crop_qmax=-1.0,
+                      crop=False, crop_qmin=0.0, crop_qmax=-1.0,
                       display=True, save=False, filename=None, legend_loc='left', directory=None,
                       axes=None):
         """
