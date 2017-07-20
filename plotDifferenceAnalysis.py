@@ -117,7 +117,7 @@ def plot_DifferenceAnalysis(root_directory, from_average=False, log_intensity=Tr
     finally:
         plt.close('all')
     try:
-        seq_obj.plot_guinier_fitting(display=display, save=True,
+        seq_obj.plot_guinier_fitting(display=display, save=True, fig_format=fig_format,
                                      directory=os.path.join(figures_directory, 'guinier_fitting'))
     except Exception as error:
         print('Exception Information:', error.__doc__)
@@ -135,13 +135,14 @@ def main():
     parser.add_argument('-f', '--figures_directory',
                         help='Figures directory in root directory for Difference Analysis (default=Figures)',
                         type=str, default='Figures')
-    parser.add_argument('--display', help='Display figures or not. (default=False)',
+    parser.add_argument('--format', help='Format of figures to save (default=png).', type=str, default='png')
+    parser.add_argument('--display', help='Display figures or not (default=False).',
                         type=str2bool, default=False)
     parser.add_argument('--log_intensity', help='Plot profiles with log intensity or not. (default=False)',
                         type=str2bool, default=True)
     parser.add_argument('--baseline_index', help='Index for baseline starts from 1 (default=1)',
                         type=int, default=1)
-    parser.add_argument('--smooth', help='Smooth curves by savgol filter (default=True)', type=str2bool, default=False)
+    parser.add_argument('--smooth', help='Smooth curves by savgol filter (default=True)', type=str2bool, default=True)
     parser.add_argument('--scale', help='Whether to scale curves (default=False)', type=str2bool, default=False)
     parser.add_argument('--scale_qmin', help='min q for scaling', type=float, default=0.0)
     parser.add_argument('--scale_qmax', help='max q for scaling', type=float, default=-1.0)
@@ -158,6 +159,7 @@ def main():
 
     root_directory = os.path.realpath(args.root_directory)
     figures_directory = os.path.join(root_directory, args.figures_directory)
+    fig_format = args.format
     display = args.display
 
     from_average = args.from_average
@@ -181,8 +183,8 @@ def main():
 
     # run
     plot_DifferenceAnalysis(root_directory, from_average=from_average,
-                            log_intensity=log_intensity,
-                            save_figures=True, figures_directory=figures_directory, display=display,
+                            log_intensity=log_intensity, display=display,
+                            save_figures=True, fig_format=fig_format, figures_directory=figures_directory,
                             baseline_index=baseline_index, smooth=smooth,
                             scale=scale, scale_qmin=scale_qmin, scale_qmax=scale_qmax,
                             crop=crop, crop_qmin=crop_qmin, crop_qmax=crop_qmax,

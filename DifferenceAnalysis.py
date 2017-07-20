@@ -457,7 +457,8 @@ class DifferenceAnalysis(object):
             ax.plot(data_dict['q'][crop_slice], data_dict[intensity_key][crop_slice],
                     label=data_dict['label'],
                     linestyle=data_dict['linestyle'], linewidth=1)
-        if not log_intensity:
+        plot_x_zeros = False
+        if not log_intensity and plot_x_zeros:
             crop_slice = dat.get_crop_slice(self.data_dict_list[0]['q'], crop, crop_qmin, crop_qmax)
             zeros_x = self.data_dict_list[0]['q'][crop_slice]
             zeros_y = np.zeros_like(zeros_x)
@@ -489,7 +490,8 @@ class DifferenceAnalysis(object):
                     fig_path = os.path.join(directory, filename)
                 else:
                     fig_path = filename
-                fig.savefig(fig_path, dpi=self.DPI, bbox_extra_artists=(lgd,), bbox_inches='tight')
+                fig.savefig(fig_path, dpi=self.DPI, transparent=False,
+                            bbox_extra_artists=(lgd,), bbox_inches='tight')
             if display:
                 # ax.legend().draggable()
                 # fig.tight_layout()
@@ -548,7 +550,8 @@ class DifferenceAnalysis(object):
                     fig_path = os.path.join(directory, filename)
                 else:
                     fig_path = filename
-                fig.savefig(fig_path, dpi=self.DPI, bbox_extra_artists=(lgd,), bbox_inches='tight')
+                fig.savefig(fig_path, dpi=self.DPI, transparent=False,
+                            bbox_extra_artists=(lgd,), bbox_inches='tight')
             if display:
                 # ax.legend().draggable()
                 # fig.tight_layout()
@@ -618,7 +621,8 @@ class DifferenceAnalysis(object):
                     fig_path = os.path.join(directory, filename)
                 else:
                     fig_path = filename
-                fig.savefig(fig_path, dpi=self.DPI, bbox_extra_artists=(lgd,), bbox_inches='tight')
+                fig.savefig(fig_path, dpi=self.DPI, transparent=False,
+                            bbox_extra_artists=(lgd,), bbox_inches='tight')
             if display:
                 # ax.legend().draggable()
                 # fig.tight_layout()
@@ -680,7 +684,8 @@ class DifferenceAnalysis(object):
                         fig_path = os.path.join(directory, filename)
                     else:
                         fig_path = filename
-                    fig.savefig(fig_path, dpi=self.DPI, bbox_extra_artists=(lgd,), bbox_inches='tight')
+                    fig.savefig(fig_path, dpi=self.DPI, transparent=False,
+                                bbox_extra_artists=(lgd,), bbox_inches='tight')
                 if display:
                     # ax.legend().draggable()
                     # fig.tight_layout()
@@ -688,8 +693,8 @@ class DifferenceAnalysis(object):
         else:
             print('Warning: Do not find any pair distribution function.')
 
-    def plot_guinier_fitting(self,
-                             display=True, save=False, filename=None, directory=None):
+    def plot_guinier_fitting(self, display=True,
+                             save=False, filename=None, fig_format='png', directory=None):
         """
         Guinier fitting
         """
@@ -731,7 +736,8 @@ class DifferenceAnalysis(object):
 
                 # +++++++++++++++++++++ SAVE AND/OR DISPLAY +++++++++++++++++++++ #
                 # if not filename:
-                filename = 'guinier_fitting_{0}.png'.format(data_dict['label'].replace(' ', '_'))
+                filename = 'guinier_fitting_{0}.{1}'.format(
+                    data_dict['label'].replace(' ', '_'), fig_format)
                 if save:
                     if directory:
                         if not os.path.exists(directory):
@@ -739,7 +745,7 @@ class DifferenceAnalysis(object):
                         fig_path = os.path.join(directory, filename)
                     else:
                         fig_path = filename
-                    fig.savefig(fig_path, dpi=self.DPI, bbox_inches='tight')
+                    fig.savefig(fig_path, dpi=self.DPI, transparent=False, bbox_inches='tight')
 
         if display and self.rg_found:
             plt.show()
