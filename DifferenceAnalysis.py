@@ -1,8 +1,8 @@
 import os
 import glob
-from cycler import cycler
 import copy
 
+# from cycler import cycler
 import numpy as np
 from matplotlib import pyplot as plt
 
@@ -88,7 +88,7 @@ class DifferenceAnalysis(object):
     # plt.rcParams['axes.autolimit_mode'] = 'round_numbers'
     # plt.rcParams['axes.xmargin'] = 0
     # plt.rcParams['axes.ymargin'] = 0
-    plt.rcParams['axes.prop_cycle'] = cycler(color='bgrcmyk')
+    # plt.rcParams['axes.prop_cycle'] = cycler(color='bgrcmyk')
 
     PLOT_LABEL = {'family': 'sans-serif',
                   'weight': 'normal',
@@ -124,9 +124,6 @@ class DifferenceAnalysis(object):
         self.data_dict_list = data_dict_list
         if buffer_dict:
             self.buffer_dict = buffer_dict
-
-    def __del__(self):
-        plt.close('all')
 
     # ----------------------------------------------------------------------- #
     #                          CLASS METHODS                                  #
@@ -188,7 +185,8 @@ class DifferenceAnalysis(object):
                           for dat_file in subtracted_dat_list]
         if scale:
             if ref_dat:
-                ref_q, ref_I, _ = get_data_dict(ref_dat)
+                ref_dict = get_data_dict(ref_dat)
+                ref_q, ref_I = ref_dict['q'], ref_dict['I']
             else:
                 ref_q = copy.deepcopy(data_dict_list[0]['q'])
                 ref_I = copy.deepcopy(data_dict_list[0]['I'])
@@ -251,7 +249,10 @@ class DifferenceAnalysis(object):
         if not baseline_dat:
             baseline_dict = copy.deepcopy(self.data_dict_list[baseline_index-1])
         else:
-            baseline_dict = get_data_dict(baseline_dat)
+            if baseline_dat in self.file_list:
+                baseline_dict = copy.deepcopy(self.data_dict_list[self.file_list.index(baseline_dat)])
+            else:
+                baseline_dict = get_data_dict(baseline_dat)
         base_q_length = baseline_dict['q'].shape[0]
         for data_dict in self.data_dict_list:
             if data_dict['q'].shape[0] == base_q_length:
@@ -266,7 +267,6 @@ class DifferenceAnalysis(object):
                 baseline_interp_I = np.interp(data_dict['q'], baseline_dict['q'], baseline_dict['I'])
                 data_dict['relative_diff'] = (data_dict['I']-baseline_interp_I) / baseline_interp_I
                 data_dict['relative_diff'] *= 100
-
 
     def calc_absolute_diff(self, baseline_index=1, baseline_dat=None):
         if not baseline_dat:
@@ -447,7 +447,7 @@ class DifferenceAnalysis(object):
 
         # ++++++++++++++++++++++++++++++ PLOT +++++++++++++++++++++++++++ #
         self.update_linestyle(dash_line_index=dash_line_index)
-        if axes:
+        if axes is not None:
             ax = axes
         else:
             fig = plt.figure(self.PLOT_NUM)
@@ -466,10 +466,10 @@ class DifferenceAnalysis(object):
         ax.set_xlabel(self.XLABEL['q'], fontdict=self.PLOT_LABEL)
         ax.set_ylabel(self.YLABEL[intensity_key], fontdict=self.PLOT_LABEL)
         ax.set_title(r'SAXS Subtracted Profiles')
-        if not axes:
+        if axes is None:
             box = ax.get_position()
             ax.set_position([box.x0, box.y0, box.width * 1.1, box.height])
-            if not log_intensity:
+            if not log_intensity or self.num_curves < 5:
                 lgd = ax.legend(loc=0, frameon=False, prop={'size': self.LEGEND_SIZE})
             else:
                 if 'left' in legend_loc:
@@ -478,11 +478,13 @@ class DifferenceAnalysis(object):
                 elif 'down' in legend_loc:
                     lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15),
                                     frameon=False, prop={'size': self.LEGEND_SIZE})
+        else:
+            lgd = ax.legend(loc='upper right', frameon=False, prop={'size': self.LEGEND_SIZE})
 
         # +++++++++++++++++++++ SAVE AND/OR DISPLAY +++++++++++++++++++++ #
         if not filename:
             filename = 'saxs_profiles.png'
-        if not axes:
+        if axes is None:
             if save:
                 if directory:
                     if not os.path.exists(directory):
@@ -494,7 +496,7 @@ class DifferenceAnalysis(object):
                             bbox_extra_artists=(lgd,), bbox_inches='tight')
             if display:
                 # ax.legend().draggable()
-                # fig.tight_layout()
+                fig.tight_layout()
                 plt.show()
 
     def plot_analysis(self, analysis, dash_line_index=(None,),
@@ -516,7 +518,7 @@ class DifferenceAnalysis(object):
 
         # ++++++++++++++++++++++++++++++ PLOT +++++++++++++++++++++++++++ #
         self.update_linestyle(dash_line_index=dash_line_index)
-        if axes:
+        if axes is not None:
             ax = axes
         else:
             fig = plt.figure(self.PLOT_NUM)
@@ -529,7 +531,7 @@ class DifferenceAnalysis(object):
         ax.set_xlabel(self.XLABEL[analysis], fontdict=self.PLOT_LABEL)
         ax.set_ylabel(self.YLABEL[analysis], fontdict=self.PLOT_LABEL)
         ax.set_title(r'SAXS {0} Analysis'.format(analysis.capitalize()))
-        if not axes:
+        if axes is None:
             box = ax.get_position()
             ax.set_position([box.x0, box.y0, box.width * 1.1, box.height])
             if 'left' in legend_loc:
@@ -542,7 +544,7 @@ class DifferenceAnalysis(object):
         # +++++++++++++++++++++ SAVE AND/OR DISPLAY +++++++++++++++++++++ #
         if not filename:
             filename = 'saxs_{}_analysis.png'.format(analysis)
-        if not axes:
+        if axes is None:
             if save:
                 if directory:
                     if not os.path.exists(directory):
@@ -554,7 +556,7 @@ class DifferenceAnalysis(object):
                             bbox_extra_artists=(lgd,), bbox_inches='tight')
             if display:
                 # ax.legend().draggable()
-                # fig.tight_layout()
+                fig.tight_layout()
                 plt.show()
 
     def plot_difference(self, difference,
@@ -577,7 +579,7 @@ class DifferenceAnalysis(object):
 
         # ++++++++++++++++++++++++++++++ PLOT +++++++++++++++++++++++++++ #
         self.update_linestyle(dash_line_index=dash_line_index)
-        if axes:
+        if axes is not None:
             ax = axes
         else:
             fig = plt.figure(self.PLOT_NUM)
@@ -600,7 +602,7 @@ class DifferenceAnalysis(object):
         ax.set_xlabel(self.XLABEL['q'], fontdict=self.PLOT_LABEL)
         ax.set_ylabel(self.YLABEL[diff_mode], fontdict=self.PLOT_LABEL)
         ax.set_title(r'{0} Difference Analysis'.format(difference.lower().capitalize()))
-        if not axes:
+        if axes is None:
             box = ax.get_position()
             ax.set_position([box.x0, box.y0, box.width * 1.1, box.height])
             if 'left' in legend_loc:
@@ -609,11 +611,13 @@ class DifferenceAnalysis(object):
             elif 'down' in legend_loc:
                 lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15),
                                 frameon=False, prop={'size': self.LEGEND_SIZE})
+        else:
+            lgd = ax.legend(loc='upper right', frameon=False, prop={'size': self.LEGEND_SIZE})
 
         # +++++++++++++++++++++ SAVE AND/OR DISPLAY +++++++++++++++++++++ #
         if not filename:
             filename = '{0}.png'.format(diff_mode)
-        if not axes:
+        if axes is None:
             if save:
                 if directory:
                     if not os.path.exists(directory):
@@ -647,7 +651,7 @@ class DifferenceAnalysis(object):
         if self.rg_found:
             # ++++++++++++++++++++++++++++++ PLOT +++++++++++++++++++++++++++ #
             self.update_linestyle(dash_line_index=dash_line_index)
-            if axes:
+            if axes is not None:
                 ax = axes
             else:
                 fig = plt.figure(self.PLOT_NUM)
@@ -663,7 +667,7 @@ class DifferenceAnalysis(object):
             ax.set_title(r'Pair Distribution Function')
             ylim = ax.get_ylim()
             ax.set_ylim([0, ylim[1]])
-            if not axes:
+            if axes is None:
                 box = ax.get_position()
                 ax.set_position([box.x0, box.y0, box.width * 1.1, box.height])
                 if 'left' in legend_loc:
@@ -676,7 +680,7 @@ class DifferenceAnalysis(object):
             # +++++++++++++++++++++ SAVE AND/OR DISPLAY +++++++++++++++++++++ #
             if not filename:
                 filename = 'pair_distribution.png'
-            if not axes:
+            if axes is None:
                 if save:
                     if directory:
                         if not os.path.exists(directory):

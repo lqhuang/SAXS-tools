@@ -159,7 +159,7 @@ def leastsq_factor(input, ref, qmin, qmax):
     print('intercept: ', params[1])
     return params[0]
 
-def scale_curve(curve, ref_curve, qmin=0.0, qmax=-1.0, stat_func=np.sum,
+def scale_curve(curve, ref_curve, qmin=0.0, qmax=-1.0, stat_func=np.mean,
                 inc_factor=False):
     """
     Scale 1D scatter curve
@@ -182,7 +182,7 @@ def scale_curve(curve, ref_curve, qmin=0.0, qmax=-1.0, stat_func=np.sum,
     else:
         curve_scale_idx = np.logical_and(curve_q >= qmin, curve_q < qmax)
         ref_scale_idx = np.logical_and(ref_q >= qmin, ref_q < qmax)
-    scaling_factor =  stat_func(ref_I[ref_scale_idx]) / stat_func(curve_I[curve_scale_idx])
+    scaling_factor = stat_func(ref_I[ref_scale_idx]) / stat_func(curve_I[curve_scale_idx])
     # print("scaling_factor is ", str(scaling_factor)[0:6])
     scaling_I = scaling_factor * curve_I
     if inc_factor:
