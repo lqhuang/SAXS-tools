@@ -1,6 +1,9 @@
 import os
 import glob
 import copy
+# import platform
+# if platform.system() == 'Windows':
+#     FIXME: DO SOMETHING with os.path.sep
 
 # from cycler import cycler
 import numpy as np
@@ -305,7 +308,7 @@ class DifferenceAnalysis(object):
             skip.append(first)
             output = os.path.join(os.path.dirname(dat_file), 'cropped_'+os.path.basename(dat_file))
             datcrop = 'datcrop {0} --first {1} --last {2} --output {3}'.format(
-                dat_file, first, last, output)
+                dat_file.replace('\\', '/'), first, last, output.replace('\\', '/'))
             run_system_command(datcrop)
             file_list.append(output)
         return file_list, skip
@@ -331,7 +334,7 @@ class DifferenceAnalysis(object):
         output_format = '-f csv'
         mininterval = 10  # default: 3
         autorg = 'autorg {0} {1} --mininterval {2} {3}'.format(
-            ' '.join(file_list), output_format, mininterval, options)
+            ' '.join(file_list).replace('\\', '/'), output_format, mininterval, options)
         log = run_system_command(autorg).splitlines()
         if crop and del_cropped:
             for cropped_file in file_list:
@@ -347,7 +350,7 @@ class DifferenceAnalysis(object):
                     data_dict['Rg'] = None
                     continue
                 # compare 'File' information to avoid 'No Rg found for ***'
-                if rg_data[0] == file_list[i]:
+                if rg_data[0] == file_list[i].replace('\\', '/'):
                     log_line += 1  # move to next line
                     data_dict['Rg'] = dict()
                     data_dict['Rg']['skip'] = skip[i-1]  # skip points due to cropping
@@ -392,9 +395,9 @@ class DifferenceAnalysis(object):
                         output_name = os.path.join(output_dir, data_dict['filename']+'.out')
                     skip = sum(data_dict['q'] < 0.010) + 1 # ignore q < 0.010 (1/angstrom)
                     datgnom = 'datgnom4 {0} --rg {1} --output {2} --skip {3} {4}'.format(
-                        data_dict['filepath'], rg, output_name, skip, options)
+                        data_dict['filepath'].replace('\\', '/'), rg, output_name.replace('\\', '/'), skip, options)
                     run_system_command(datgnom)
-                    data_dict['pair_distribution'] = gnom.parse_gnom_file(output_name)
+                    data_dict['pair_distribution'] = gnom.parse_gnom_file(output_name.replace('\\', '/'))
 
     def calc_guinier(self):
         """
@@ -478,8 +481,8 @@ class DifferenceAnalysis(object):
                 elif 'down' in legend_loc:
                     lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15),
                                     frameon=False, prop={'size': self.LEGEND_SIZE})
-        else:
-            lgd = ax.legend(loc='upper right', frameon=False, prop={'size': self.LEGEND_SIZE})
+        # else:
+        #     lgd = ax.legend(loc='upper right', frameon=False, prop={'size': self.LEGEND_SIZE})
 
         # +++++++++++++++++++++ SAVE AND/OR DISPLAY +++++++++++++++++++++ #
         if not filename:
@@ -658,7 +661,7 @@ class DifferenceAnalysis(object):
                 ax = plt.subplot(111)
             for data_dict in self.data_dict_list:
                 if data_dict['pair_distribution'] is not None:
-                    ax.plot(data_dict['pair_distribution']['r'], data_dict['pair_distribution']['pr'],
+                     ax.plot(data_dict['pair_distribution']['r'], data_dict['pair_distribution']['pr'],
                             label=r'{0} $D_{{max}}={1:.2f}$'.format(
                                 data_dict['label'], data_dict['pair_distribution']['Dmax']),
                             linestyle=data_dict['linestyle'], linewidth=1)
