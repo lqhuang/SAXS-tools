@@ -5,7 +5,7 @@ Usage:
 
 Options:
     -h --help                  Show this screen.
-    --ref=<ref_dat>            Reference RAW dat file [default: None]. Default to use first dat file.
+    --ref=<ref_dat>            Reference RAW dat file [default: None]. Default to use the first dat file.
     --smooth=<smooth>          Whether to smooth curves by savgol filter [default: False].
     --log_I=<log_I>            plot figures in log intensity or not [default: True].
     --qmin=<qmin>              qmin to calculate scaling ratio [default: 0].
@@ -14,14 +14,14 @@ Options:
     --crop_qmax=<crop_qmax>    qmax to crop 1d curve [default: 1E10].
     --display=<display>        Display figures of results [default: True].
     --save=<save>              Save figures to files [default: False].
-    --path=<path>              File path for saving figures [default: './'].
+    --path=<path>              File path for saving figures [default: ./].
 """
 import os
 import numpy as np
 from docopt import docopt
 import matplotlib.pyplot as plt
-from saxsio import dat
 from DifferenceAnalysis import DifferenceAnalysis
+from utils import str2bool
 
 
 def analysis_dat():
@@ -29,15 +29,15 @@ def analysis_dat():
     argv = docopt(__doc__)
     raw_dats = argv['<dat_files>']
     ref_dat = argv['--ref']
-    log_intensity = argv['--log_I']
-    smooth = argv['--smooth']
+    log_intensity = str2bool(argv['--log_I'])
+    smooth = str2bool(argv['--smooth'])
     scale_qmin = float(argv['--qmin'])
     scale_qmax = float(argv['--qmax'])
     crop_qmin = float(argv['--crop_qmin'])
     crop_qmax = float(argv['--crop_qmax'])
-    display = bool(argv['--display'])
-    save = bool(argv['--save'])
-    path = os.path.realpath(str(argv['--path']))
+    display = str2bool(argv['--display'])
+    save = str2bool(argv['--save'])
+    path = os.path.realpath(argv['--path'])
 
     if ref_dat == 'None':
         ref_dat = None
@@ -47,7 +47,7 @@ def analysis_dat():
         raw_dats, smooth=smooth,
         scale=True, ref_dat=ref_dat, scale_qmin=scale_qmin, scale_qmax=scale_qmax)
 
-    ### making plots
+    ### make plots
     fig, ax = plt.subplots(ncols=2, figsize=(16, 6))
     # subtracted profiles
     seq_obj.plot_profiles(log_intensity=log_intensity, axes=ax[0],
