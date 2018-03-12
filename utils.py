@@ -7,9 +7,11 @@ from difflib import SequenceMatcher
 
 def run_system_command(command_string):
     """Function used to run the system command and return the log"""
-    process = subprocess.Popen(shlex.split(command_string),  # Run system command
-                               stdout=subprocess.PIPE)
-                            #    stderr=subprocess.PIPE)
+    process = subprocess.Popen(
+        shlex.split(command_string),  # Run system command
+        stdout=subprocess.PIPE,
+        # stderr=subprocess.PIPE,
+    )
     output, error = process.communicate()  # Get the log.
     if error is not None:
         print(error.decode('utf-8'))
@@ -31,16 +33,17 @@ def find_common_string_from_list(string_list):
     return common_string
 
 
-def find_common_string(a, b):
-    match = SequenceMatcher(None, a, b).find_longest_match(
-        0, len(a), 0, len(b))
-    common_string = a[match.a:match.size]
+def find_common_string(str_a, str_b):
+    match = SequenceMatcher(None, str_a, str_b).find_longest_match(
+        0, len(str_a), 0, len(str_b))
+    common_string = str_a[match.str_a:match.size]
     return common_string
 
 
 def print_arguments(args_dict):
     if 'root_directory' in args_dict.keys():
-        exp_base = os.path.basename(os.path.realpath(args_dict['root_directory']))
+        exp_base = os.path.basename(
+            os.path.realpath(args_dict['root_directory']))
     print('Input parameters for {} are:'.format(exp_base))
     for (key, value) in args_dict.items():
         print('{0}: {1}'.format(key, value))

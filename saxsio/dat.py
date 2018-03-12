@@ -177,8 +177,8 @@ def scale_curve(curve, ref_curve, qmin=0.0, qmax=-1.0, stat_func=np.mean,
     curve_q, curve_I = curve[0], curve[1]
     ref_q, ref_I = ref_curve[0], ref_curve[1]
     if qmax < 0:
-        curve_scale_idx = curve_q > qmin
-        ref_scale_idx = ref_q > qmin
+        curve_scale_idx = curve_q >= qmin
+        ref_scale_idx = ref_q >= qmin
     else:
         curve_scale_idx = np.logical_and(curve_q >= qmin, curve_q < qmax)
         ref_scale_idx = np.logical_and(ref_q >= qmin, ref_q < qmax)

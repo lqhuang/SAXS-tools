@@ -58,7 +58,7 @@ def subtract_data_dict(data_dict_list, buffer_dict, smooth=False,
                 dat.scale_curve((data_dict['q'], data_dict['I']),
                                 (ref_q, ref_I), qmin=scale_qmin, qmax=scale_qmax,
                                 inc_factor=True)
-            print('For {0} file, the scaling factor is {1}'.format(
+            print('For {0} file, the scaling factor is {1}.'.format(
                 data_dict['filename'], data_dict['scaling_factor']))
         data_dict['I'] -= buffer_dict['I']
         if smooth:
@@ -197,7 +197,7 @@ class DifferenceAnalysis(object):
                 data_dict['I'], data_dict['scaling_factor'] = \
                     dat.scale_curve((data_dict['q'], data_dict['I']), (ref_q, ref_I),
                                     qmin=scale_qmin, qmax=scale_qmax, inc_factor=True)
-                print('For {0} file, the scaling factor is {1}'.format(
+                print('For {0} file, the scaling factor is {1}.'.format(
                     data_dict['filename'], data_dict['scaling_factor']))
         cls = DifferenceAnalysis(data_dict_list, file_list=subtracted_dat_list)
         return cls
@@ -222,7 +222,7 @@ class DifferenceAnalysis(object):
                 data_dict['I'], data_dict['scaling_factor'] = \
                     dat.scale_curve((data_dict['q'], data_dict['I']), (ref_q, ref_I),
                                     qmin=scale_qmin, qmax=scale_qmax, inc_factor=True)
-                print('For {0} file, the scaling factor is {1}'.format(
+                print('For {0} file, the scaling factor is {1}.'.format(
                     data_dict['filename'], data_dict['scaling_factor']))
         cls = DifferenceAnalysis(data_dict_list, file_list=file_list)
         return cls

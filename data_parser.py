@@ -15,9 +15,9 @@ Options:
     --display=<display>        Display figures of results [default: True].
     --save=<save>              Save figures to files [default: False].
     --path=<path>              File path for saving figures [default: ./].
+    --dash_line_index=<idx>    plot specific line under dash style (seperate with comma) [default: None].
 """
 import os
-import numpy as np
 from docopt import docopt
 import matplotlib.pyplot as plt
 from DifferenceAnalysis import DifferenceAnalysis
@@ -38,30 +38,46 @@ def analysis_dat():
     display = str2bool(argv['--display'])
     save = str2bool(argv['--save'])
     path = os.path.realpath(argv['--path'])
+    try:
+        dash_line_index = argv['--dash_line_index'].split(',')
+        dash_line_index = [int(idx) for idx in dash_line_index]
+    except AttributeError:
+        dash_line_index = (None, )
 
     if ref_dat == 'None':
         ref_dat = None
 
     ### load data dict
     seq_obj = DifferenceAnalysis.from_dats_list(
-        raw_dats, smooth=smooth,
-        scale=True, ref_dat=ref_dat, scale_qmin=scale_qmin, scale_qmax=scale_qmax)
+        raw_dats,
+        smooth=smooth,
+        scale=True,
+        ref_dat=ref_dat,
+        scale_qmin=scale_qmin,
+        scale_qmax=scale_qmax,
+    )
 
     ### make plots
+    plot_args = dict(
+        crop=True,
+        crop_qmin=crop_qmin,
+        crop_qmax=crop_qmax,
+        dash_line_index=dash_line_index,
+    )
     fig, ax = plt.subplots(ncols=2, figsize=(16, 6))
     # subtracted profiles
-    seq_obj.plot_profiles(log_intensity=log_intensity, axes=ax[0],
-                          crop=True, crop_qmin=crop_qmin, crop_qmax=crop_qmax)
+    seq_obj.plot_profiles(log_intensity=log_intensity, axes=ax[0], **plot_args)
     ax[0].legend(loc=0, frameon=False, prop={'size': seq_obj.LEGEND_SIZE})
     # relative difference
-    seq_obj.plot_difference('relative', baseline_dat=ref_dat, axes=ax[1],
-                            crop=True, crop_qmin=crop_qmin, crop_qmax=crop_qmax)
+    seq_obj.plot_difference(
+        'relative', baseline_dat=ref_dat, axes=ax[1], **plot_args)
     fig.tight_layout()
 
     if save:
         plt.savefig(os.path.join(path, 'figure.png'), dpi=seq_obj.DPI)
     if display:
         plt.show()
+
 
 if __name__ == '__main__':
     analysis_dat()
