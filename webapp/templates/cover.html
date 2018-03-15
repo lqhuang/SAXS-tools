@@ -1,0 +1,49 @@
+{% extends "bootstrap/base.html" %}
+
+{% block head %}
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    {{ super() }}
+    <link href="/static/css/cover.css" rel="stylesheet">
+    <title>SAS Dashboard</title>
+{% endblock %}
+
+{% block content %}
+    <div class="site-wrapper">
+        <div class="site-wrapper-inner">
+            <div class="cover-container">
+                <div class="masthead clearfix">
+                    <div class="inner">
+                        <h3 class="masthead-brand">LiuLab</h3>
+                        <nav>
+                            <ul class="nav masthead-nav">
+                                <li class="active"><a href="/">Home</a></li>
+                                <li><a href="/">Features</a></li>
+                                <li><a href="/">Contact</a></li>
+                            </ul>
+                        </nav>
+                    </div>
+                </div>
+                <div class="inner cover">
+                    <h1 class="cover-heading">SAS Dashboard</h1>
+                    <p class="lead">Modern, browser-based, interactive, cooperative and extensible dashboard
+                                    for small angle scattering (SAS) data analysis.</p>
+                    <p class="lead">
+                        <a href="index" class="btn btn-lg btn-default">Get started</a>
+                    </p>
+                </div>
+                <div class="mastfoot">
+                    <div class="inner">
+                        <!-- <p>Powered by 
+                            <a href="https://github.com/plotly/plotly.py">Plot.ly</a>,
+                            <a href="https://github.com/plotly/dash">Dash</a>,
+                            <a href="https://github.com/pallets/flask">Flask</a>,
+                            <a href="https://github.com/twbs/bootstrap">Bootstrap</a>.
+                        </p> -->
+                        <p>Lightweight SAS toolbox.</p>
+                    </div>
+                </div>  
+            </div>
+        </div>
+    </div>
+{% endblock %}

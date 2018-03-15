@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+
+{% block page_content %}
+    {{ super() }}
+
+    <div class="row">
+        <div class="col-sm-9">
+            <!-- experiment header -->
+            <div class="page-header"><h1>EXP 01 <small>notes</small></h1></div>
+            <!-- experiment information and setup -->
+            <h4>Setup</h4>
+            <table class="table table-hover">
+                    <thead>
+                        <th>Parameters</th>
+                        <th>Value</th>
+                    </thead>
+                    {% for key, val in exp_setup.items() %}
+                        <tr>
+                            <td>{{key}}</td>
+                            <td>{{val}}</td>
+                        </tr>
+                    {% endfor %}
+            </table>
+            <hr>
+            <h4>Configuration</h4>
+            <!-- expeirment SAS image -->
+            <!-- expeirment SAS profile (curves) -->
+            <!-- expeirment CorMapAnalysis -->
+            <!-- expeirment sequence analysis -->
+            <!-- expeirment guinier fitting analysis -->
+            <!-- experiment Pair-wise distribution analysis (GNOM) -->
+            <!-- experiment molecular weight analysis -->
+            {% for dp in dashboard_params  %}
+            <hr>
+            <h4 id="{{dp.graph_type}}">{{ dp.graph_name }}</h4>
+            <div class="embed-responsive">
+                <iframe class="embed-responsive-item" src="{{ url_for('/dashboard', exp=exp_id, graph_type=dp.graph_type) }}">
+                </iframe>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="col-sm-3">
+            <nav class="navbar">
+                <!-- side bar -->
+                <ul class="nav" role="navigation">
+                    <li><a href="#setup">Setup</a></li>
+                    <li><a href="#configuration">Configuration</a></li>
+                    {% for dp in dashboard_params %}
+                        <li><a href="#{{dp.graph_type}}">{{ dp.graph_name }}</a></li>
+                    {% endfor %}
+                    <!-- <li><a href="#sasimage">Images</a></li>
+                    <li><a href="#sasprofile">Profiles</a></li>
+                    <li><a href="#difference">Sequence difference</a></li>
+                    <li><a href="#difference">Sequence difference</a></li>
+                    <li><a href="#guinier">Guinier fitting</a></li>
+                    <li><a href="#gnom">P(r) distribution</a></li>
+                    <li><a href="#mw">Molecular weight</a></li> -->
+                </ul>
+                <hr>
+                <ul class="nav" role="navigation">
+                    <li><a href="#">Return to top</a></li>
+                    <li><a href="/exp_cards">Return to experiment cards</a></li>
+                </ul>
+                <hr>
+                <ul class="nav" role="navigation">
+                    <li><a>Previous experiment</a></li>
+                    <li><a>Next experiment</a></li>
+                </ul>
+            </nav>
+        </div>
+    </div>
+{% endblock %}
