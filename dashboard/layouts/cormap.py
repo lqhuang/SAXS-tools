@@ -34,3 +34,4 @@ layout = html.Div(children=[
 
 def get_cormap(exp):
     return layout
+    return 'Not implemented'

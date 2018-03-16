@@ -102,12 +102,12 @@ def get_difference(exp):
     return layout
 
 
-@dash_app.callback(
-    Output('difference-graph', 'figure'), [
-        Input('difference-x-axis-scale', 'value'),
-        Input('difference-graph', 'figure')
-    ])
-def update_x_axis_scale(curr_x_logscale, figure_data):
-    figure_data.figure.layout.xaxis['title'] = XLABEL[curr_x_logscale + '_q']
-    figure_data.figure.layout.xaxis['type'] = curr_x_logscale
-    return figure_data
+# @dash_app.callback(
+#     Output('difference-graph', 'figure'), [
+#         Input('difference-x-axis-scale', 'value'),
+#         Input('difference-graph', 'figure')
+#     ])
+# def update_x_axis_scale(curr_x_logscale, figure_data):
+#     figure_data.figure.layout.xaxis['title'] = XLABEL[curr_x_logscale + '_q']
+#     figure_data.figure.layout.xaxis['type'] = curr_x_logscale
+#     return figure_data

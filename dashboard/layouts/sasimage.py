@@ -91,10 +91,10 @@ def update_image_1(filename, colorbar_range):
     return np.eye(10)
 
 
-@dash_app.callback(
-    Output('sasimage-graph-2', 'figure'), [
-        Input('sasimage-file-selection-2', 'value'),
-        Input('sasimage-colorbar-slider', 'value'),
-    ])
-def update_image_2(filename, colorbar_range):
-    return np.eye(10)
+# @dash_app.callback(
+#     Output('sasimage-graph-2', 'figure'), [
+#         Input('sasimage-file-selection-2', 'value'),
+#         Input('sasimage-colorbar-slider', 'value'),
+#     ])
+# def update_image_2(filename, colorbar_range):
+#     return np.eye(10)
