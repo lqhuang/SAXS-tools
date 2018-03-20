@@ -1,24 +1,24 @@
 {% extends "base.html" %}
 
 {% block page_content %}
-    <table class="table table-hover">
-        <thead>
-            <th>#</th>
-            <th>Sample</th>
-            <th>Concentration(mg/ml)</th>
-            <th>Magnet distance(mm)</th>
-            <th>Notes</th>
-            <th>More</th>
-        </thead>
-        {% for setup in exp_setup_list %}
-        <tr>
-            <td>{{ setup.number }}</td>
-            <td>{{ setup.sample }}</td>
-            <td>{{ setup.concentration }}</td>
-            <td>{{ setup.magnet_distance }}</td>
-            <td>{{ setup.extra_info }}</td>
-            <td><a href="/exp_pages/exp{{setup.number}}">Details</a></td>
-        </tr>
-        {% endfor %}
-    </table>
+  <table class="table table-hover">
+    <thead>
+      <th>#</th>
+      <th>Sample</th>
+      <th>Concentration(mg/ml)</th>
+      <th>Magnet distance(mm)</th>
+      <th>Notes</th>
+      <th>More</th>
+    </thead>
+      {% for setup in exp_setup_list %}
+      <tr>
+        <td>{{ setup.number }}</td>
+        <td>{{ setup.sample }}</td>
+        <td>{{ setup.concentration }}</td>
+        <td>{{ setup.magnet_distance }}</td>
+        <td>{{ setup.extra_info }}</td>
+        <td><a href="/exp_pages/exp{{ setup.number }}">Details</a></td>
+      </tr>
+      {% endfor %}
+  </table>
 {% endblock %}

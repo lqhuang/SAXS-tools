@@ -1,21 +1,25 @@
 {% extends "bootstrap/base.html" %}
 
-{% block head %}
+{% block title %}SAS Dashboard{% endblock %}
+
+{% block metas %}
 	<meta charset="utf-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1">
-	<title>SAS Dashboard</title>
-	<link href="/static/css/iframe.css" rel="stylesheet">
 	{{ super() }}
+{% endblock %}
+
+{% block styles %}
+  {{ super() }}
+  <link href="{{ url_for('static', filename='css/iframe.css') }}" rel="stylesheet">
 {% endblock %}
 
 {% block navbar %}
 	{{ super() }}
 	<ul class="container nav nav-tabs" role="navigation">
-			<li role="presentation"><a href="/">Home</a></li>
-			<li role="presentation"><a href="/index">Project settings</a></li>
-			<li role="presentation"><a href="/exp_cards">Experiment cards</a></li>
-			<li role="presentation"><a href="/export">Export to PDF</a></li>
-			<li role="presentation"><a href="/index">About</a></li>
+    <li role="presentation"><a href="/">Home</a></li>
+    <li role="presentation"><a href="/index">Project settings</a></li>
+    <li role="presentation"><a href="/exp_cards">Experiment cards</a></li>
+    <li role="presentation"><a href="/export">Export to PDF</a></li>
+    <li role="presentation"><a href="/index">About</a></li>
 	</ul>
 	<div class="jumbotron" style="background:#614887">
 		<div class="container">
@@ -32,6 +36,6 @@
 	</div>
 	<hr>
 	<footer class="container-fluid text-center">
-		<p>Powered by Flask, Bootstrap</p>
+    <p>Powered by Flask, Bootstrap</p>
 	</footer>
 {% endblock %}
