@@ -1,5 +1,4 @@
 import os
-from os.path import dirname
 import sys
 import glob
 import copy
@@ -10,6 +9,10 @@ import copy
 # from cycler import cycler
 import numpy as np
 from matplotlib import pyplot as plt
+
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if ROOT_DIR not in sys.path:
+    sys.path.append(ROOT_DIR)
 
 from saxsio import dat, gnom
 from utils import run_system_command
@@ -134,27 +137,28 @@ class DifferenceAnalysis(object):
     #                          CLASS METHODS                                  #
     # ----------------------------------------------------------------------- #
     @classmethod
-    def from_1d_curves(self, root_directory, buffer_dat, subtract=False,
+    def from_1d_curves(cls, root_directory, buffer_dat, subtract=False,
                        scale=False, ref_dat=None, scale_qmin=None, scale_qmax=None,
                        baseline_dat=None, crop=False):
         # glob files
         file_location = os.path.join(root_directory, 'Simple_Results')
         file_list = glob.glob(file_location)
+        file_list.sort()
         # read data
-        cls = None
-        return cls
+        return None
 
     @classmethod
-    def from_average_dats(self, average_dat_location, buffer_dat=None,
+    def from_average_dats(cls, average_dat_location, buffer_dat=None,
                           smooth=False,
                           scale=False, ref_dat=None, scale_qmin=0.0, scale_qmax=-1.0):
         # glob files
         file_list = glob.glob(average_dat_location)
-        if len(file_list) == 0:
+        file_list.sort()
+        if not file_list:
             raise FileNotFoundError('Do not find dat files.')
         average_dat_list = [fname for fname in file_list \
                             if 'buffer' not in fname.split(os.path.sep)[-1].lower()]
-        if len(average_dat_list) == 0:
+        if not average_dat_list:
             raise FileNotFoundError('Do not find any average dats.')
         # read buffer
         buffer_dict = dict()
@@ -174,15 +178,15 @@ class DifferenceAnalysis(object):
         subtracted_data_dict_list = subtract_data_dict(data_dict_list, buffer_dict, smooth=smooth,
                                                        scale=scale, ref_dat=ref_dat,
                                                        scale_qmin=scale_qmin, scale_qmax=scale_qmax)
-        cls = DifferenceAnalysis(subtracted_data_dict_list, buffer_dict=buffer_dict, file_list=None)
         # Undone: pass file_list of dats into class
-        return cls
+        return cls(subtracted_data_dict_list, buffer_dict=buffer_dict, file_list=None)
 
     @classmethod
-    def from_subtracted_dats(self, subtracted_dat_location, smooth=False,
+    def from_subtracted_dats(cls, subtracted_dat_location, smooth=False,
                              scale=False, ref_dat=None, scale_qmin=0.0, scale_qmax=-1.0):
         # glob files
         subtracted_dat_list = glob.glob(subtracted_dat_location)
+        subtracted_dat_list.sort()
         if len(subtracted_dat_list) == 0:
             raise FileNotFoundError('Do not find any subtracted dat files.')
         # read data
@@ -201,15 +205,16 @@ class DifferenceAnalysis(object):
                                     qmin=scale_qmin, qmax=scale_qmax, inc_factor=True)
                 print('For {0} file, the scaling factor is {1}.'.format(
                     data_dict['filename'], data_dict['scaling_factor']))
-        cls = DifferenceAnalysis(data_dict_list, file_list=subtracted_dat_list)
-        return cls
+        return cls(data_dict_list, file_list=subtracted_dat_list)
 
     @classmethod
-    def from_dats_list(self, dats_list, smooth=False,
+    def from_dats_list(cls, file_list, smooth=False,
                        scale=False, ref_dat=None, scale_qmin=0.0, scale_qmax=-1.0):
         # glob files
-        file_list = dats_list
-        if len(file_list) == 0:
+        if not isinstance(file_list, list):
+            raise TypeError('Expect list of dat files.')
+        file_list.sort()
+        if not file_list:
             raise FileNotFoundError('Do not find dat files')
         # read data
         # Notice that here is no option !
@@ -226,8 +231,7 @@ class DifferenceAnalysis(object):
                                     qmin=scale_qmin, qmax=scale_qmax, inc_factor=True)
                 print('For {0} file, the scaling factor is {1}.'.format(
                     data_dict['filename'], data_dict['scaling_factor']))
-        cls = DifferenceAnalysis(data_dict_list, file_list=file_list)
-        return cls
+        return cls(data_dict_list, file_list=file_list)
 
     # ----------------------------------------------------------------------- #
     #                         INSTANCE METHODS                                #
@@ -315,7 +319,7 @@ class DifferenceAnalysis(object):
             file_list.append(output)
         return file_list, skip
 
-    def calc_radius_of_gyration(self, options='', crop=True, del_cropped=True):
+    def calc_radius_of_gyration(self, options='', crop=False, del_cropped=True):
         """
         autorg:
         output for csv support:

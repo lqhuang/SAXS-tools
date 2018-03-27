@@ -4,7 +4,12 @@ import os
 import sys
 import glob
 
-from RAWWrapper import RAWSimulator
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if ROOT_DIR not in sys.path:
+    sys.path.append(ROOT_DIR)
+
+from RAW import RAWSimulator
+from saxsio import dat
 
 
 def remove_processed(data_list, processed_path):
@@ -20,7 +25,7 @@ def remove_processed(data_list, processed_path):
 
 def main():
     # TODO: complete this scripts
-    exp_root_path = sys.argv[0]
+    exp_root_path = sys.argv[2]
 
     exp_config = {
         'raw_cfg_path': sys.argv[1],
@@ -63,7 +68,7 @@ def main():
     raw_simulator = RAWSimulator(
         exp_config['raw_cfg_path'],
         # exp_config['log_file'],
-        do_analysis=True,
+        do_analysis=False,
     )
     raw_simulator.set_raw_settings(**raw_settings)
 
@@ -94,12 +99,50 @@ def main():
         else:
             sample_frames.append(each_sasm)
 
-    average_buffer_sasm = raw_simulator.averageSASMs(buffer_frames[num_skip:])
+    if buffer_frames:
+        average_buffer_sasm = raw_simulator.averageSASMs(
+            buffer_frames[num_skip:])
+    else:
+        avg_buffer_pattern = os.path.join(raw_settings['AveragedFilePath'],
+                                          '*buffer*.dat')
+        avg_buffer_list = glob.glob(avg_buffer_pattern)
+        if not avg_buffer_pattern:
+            raise FileNotFoundError('No averaged buffer dat found.')
+        elif len(avg_buffer_list) > 1:
+            raise Warning(
+                'Exist two or more buffer dats. The first one will be used.')
+        else:
+            average_buffer_sasm = raw_simulator.loadSASMs(avg_buffer_list)[0]
 
-    # TODO: save figures of middle process for debugging
-    # before alignment and after alignment
-    raw_simulator.alignSASMs(sample_frames[0], sample_frames,
-                             (scale_qmin, sclae_qmax))
+    # TODO: save figures of middle process for debugging before alignment and after alignment
+    alignment = 'statistics'
+    # alignment = 'ionchamber'
+    # alignment = None
+    if alignment == 'statistics':
+        raw_simulator.alignSASMs(sample_frames[num_skip], sample_frames,
+                                 (scale_qmin, sclae_qmax))
+    elif alignment == 'ionchamber':
+        ionchamber_pattern = os.path.join(exp_config['source_data_path'],
+                                          '*.[Ii]o*chamber')
+        ionchamber_list = sorted(glob.glob(ionchamber_pattern))
+        for ion_name in reversed(ionchamber_list):
+            if 'buffer' in os.path.basename(ion_name):
+                ionchamber_list.remove(ion_name)
+        ionchamber_factors = list()
+        for ion_name in ionchamber_list:
+            # TODO: how to decide number of points to skip in ionchamber?
+            # sometimes, bad intensity log is negative, but sometimes not.
+            # TODO: match ionchamber file to id list of frames
+            ion_intensity = dat.load_ionchamber(ion_name, skip=2)
+            factor = sum(ion_intensity) / len(ion_intensity)
+            ionchamber_factors.append(factor)
+        scaling_factors = [
+            each / ionchamber_factors[0] for each in ionchamber_factors
+        ]
+        print('\n'.join(str(each) for each in scaling_factors))
+    # else:
+    #     # Not scale. Do nothing
+    #     pass
 
     sample_frames_by_group = [
         sample_frames[i:i + num_frames_per_group]
@@ -110,11 +153,14 @@ def main():
         for per_group in sample_frames_by_group
     ]
 
+    if alignment == 'ionchamber':
+        raw_simulator.scaleSASMs(average_sasm_list, scaling_factors)
+
     subtracted_sasm_list = raw_simulator.subtractSASMs(average_buffer_sasm,
                                                        average_sasm_list)
 
-    for each_sasm in subtracted_sasm_list:
-        raw_simulator.analyse(each_sasm)
+    # for each_sasm in subtracted_sasm_list:
+    #     raw_simulator.analyse(each_sasm)
 
 
 if __name__ == '__main__':

@@ -1,30 +1,37 @@
 import os
+import sys
 import re
 import glob
 import argparse
+
 from matplotlib.pyplot import close
+
+ROOT_DIR = os.path.dirname(os.path.dirname(__file__))
+if ROOT_DIR not in sys.path:
+    sys.path.append(ROOT_DIR)
+
 from CorMapAnalysis import ScatterAnalysis
 from saxsio import dat
 from utils import find_common_string_from_list, print_arguments, str2bool
 
 
 def plot_CorMapAnalysis(root_directory, skip=0,
-                        subtract=True, buffer_dat=None,
+                        buffer_dat=None,
                         scale=False, ref_dat=None, scale_qmin=0.0, scale_qmax=-1.0,
                         crop=False, crop_qmin=0.0, crop_qmax=-1.0,
                         display=False, save_figures=True,
                         fig_format='png', figures_directory=None):
     # check Frames directory
     exists_frames_directory = os.path.exists(os.path.join(root_directory, 'Frames'))
-    exists_valid_frames_directory = os.path.exists(os.path.join(root_directory, 'Valid_Frames'))
+    exists_valid_frames_directory = os.path.exists(os.path.join(root_directory, 'Averaged'))
     if exists_frames_directory:
         file_location = os.path.join(root_directory, 'Frames')
     elif not exists_frames_directory and exists_valid_frames_directory:
-        file_location = os.path.join(root_directory, 'Valid_Frames')
+        file_location = os.path.join(root_directory, 'Averaged')
     else:
         raise ValueError('Do not exist frames directory')
     # glob files
-    file_list = glob.glob(os.path.join(file_location, '*'))
+    file_list = sorted(glob.glob(os.path.join(file_location, '*')))
     buffer_dat_list = list()
     data_dat_list = list()
     frame_num_list = list()
@@ -59,12 +66,12 @@ def plot_CorMapAnalysis(root_directory, skip=0,
     scat_obj = ScatterAnalysis.from_1d_curves(subtract_dat_location + '*')
     if not figures_directory:
         figures_directory = os.path.join(root_directory, 'Figures')
-    EXP_prefix = os.path.basename(root_directory)
+    exp_prefix = os.path.basename(root_directory)
     scat_obj.plot_cormap(display=display, save=save_figures,
-                         filename=EXP_prefix+'_cormap.'+fig_format,
+                         filename=exp_prefix+'_cormap.'+fig_format,
                          directory=figures_directory)
     scat_obj.plot_heatmap(display=display, save=save_figures,
-                          filename=EXP_prefix+'_heatmap.'+fig_format,
+                          filename=exp_prefix+'_heatmap.'+fig_format,
                           directory=figures_directory)
 
     close('all')
@@ -86,8 +93,7 @@ def main():
 
     # parse arguments
     args = parser.parse_args()
-    args_dict = args.__dict__
-    print_arguments(args_dict)
+    print_arguments(args.__dict__)
 
     root_directory = args.root_directory
     figures_directory = os.path.join(root_directory, args.figures_directory)
@@ -102,7 +108,7 @@ def main():
     crop_qmax = args.crop_qmax
 
     # run
-    plot_CorMapAnalysis(root_directory, subtract=True, skip=skip,
+    plot_CorMapAnalysis(root_directory, skip=skip,
                         scale=scale, scale_qmin=scale_qmin, scale_qmax=scale_qmax,
                         crop=crop, crop_qmin=crop_qmin, crop_qmax=crop_qmax,
                         save_figures=True, figures_directory=figures_directory)

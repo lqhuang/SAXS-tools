@@ -5,6 +5,15 @@ from scipy.stats import linregress
 from scipy.signal import savgol_filter
 
 
+def load_ionchamber(filepath, skip=0):
+    intensity_list = []
+    with open(filepath, 'r') as f:
+        for line in f:
+            if not line.startswith('#'):
+                intensity_list.append(float(line.split()[-1]))
+    return intensity_list[skip:]
+
+
 def load_iq_dat(filepath):
     with open(filepath, 'r') as f:
         q = []
