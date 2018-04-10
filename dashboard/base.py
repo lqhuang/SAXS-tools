@@ -3,7 +3,6 @@ from __future__ import print_function, division
 import dash
 import dash_core_components as dcc
 import dash_html_components as html
-from flask import url_for
 
 from webapp.app import flask_app, DASH_URL_BASE
 

@@ -5,16 +5,19 @@ from urllib import parse
 from dash.dependencies import Input, Output
 
 from .base import dash_app
-from .layouts import get_sasimage, get_sasprofile, get_cormap, get_gnom
+from .layouts import (get_sasimage, get_sasprofile, get_difference, get_cormap,
+                      get_gnom)
 
 
-def get_layout(exp, layout_type):
+def get_graph_layout(exp, layout_type):
     if layout_type == 'sasimage':
         return get_sasimage(exp)
     elif layout_type == 'sasprofile':
         return get_sasprofile(exp)
     elif layout_type == 'cormap':
         return get_cormap(exp)
+    elif layout_type == 'difference':
+        return get_difference(exp)
     elif layout_type == 'guinier':
         return '404'
     elif layout_type == 'gnom':
@@ -29,7 +32,7 @@ def display_page(href):
         query_result = parse.parse_qs(parse.urlparse(href).query)
         exp = query_result['exp']
         layout_type = query_result['graph_type'][0]
-        return get_layout(exp, layout_type)
+        return get_graph_layout(exp, layout_type)
     else:
         return '404'
 

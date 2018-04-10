@@ -6,6 +6,8 @@ import glob
 import yaml
 from flask import render_template, Blueprint
 
+from webapp.forms import ExperimentSetupForm
+
 exp_pages = Blueprint(
     'exp_pages',
     __name__,
@@ -14,21 +16,26 @@ exp_pages = Blueprint(
 )
 
 NAME = dict()
-NAME['sasimage'] = 'SAS image'
-NAME['sasprofile'] = 'SAS profile'
-NAME['cormap'] = 'Correlation map'
-NAME['difference'] = 'Sequence'
-NAME['guinier'] = 'Guinier fitting'
-NAME['gnom'] = 'Pair-wise distribution (GNOM)'
-NAME['mw'] = 'Molecular weight'
+NAME['sasimage'] = 'SAS Image'
+NAME['sasprofile'] = 'SAS Profile'
+NAME['cormap'] = 'Correlation Map'
+NAME['difference'] = 'Sequence Analysis'
+NAME['guinier'] = 'Guinier Fitting'
+NAME['gnom'] = 'Pair-wise Distribution (GNOM)'
+NAME['mw'] = 'Molecular Weight'
 
 # TODO: set project root path
 ROOT_PATH = 'undone'
+SHOW_DASHBOARD = True
 
 
 def get_exp_info(setup_file):
-    with open(setup_file, 'r') as fname:
-        setup = yaml.load(fname)
+    try:
+        with open(setup_file, 'r', encoding='utf-8') as fname:
+            setup = yaml.load(fname)
+    except yaml.scanner.ScannerError as err:  # syntax error: empty fields
+        print(err)
+        setup = {}
     return setup
 
 
@@ -40,9 +47,15 @@ def show_exp_cards():
     return render_template('exp_cards.html', exp_setup_list=exp_setup_list)
 
 
-@exp_pages.route('/exp_pages/exp<exp_id>')
+@exp_pages.route('/exp_pages/exp<int:exp_id>')
 def individual_experiment_page(exp_id):
-    selected_graph = ['sasimage', 'sasprofile', 'cormap', 'difference', 'gnom']
+    selected_graph = [
+        'sasimage',
+        'cormap',
+        'sasprofile',
+        'difference',
+        'gnom',
+    ]
     dashboard_params = [{
         'graph_type': gtype,
         'graph_name': NAME[gtype]
@@ -53,9 +66,12 @@ def individual_experiment_page(exp_id):
     if os.path.exists(setup_file):
         exp_setup = get_exp_info(setup_file)
     else:
-        exp_setup = {'None': 'Missing setup file'}
+        exp_setup = {}
+    exp_setup_form = ExperimentSetupForm(exp_setup)
+
     return render_template(
         'exp_base.html',
         exp_id=exp_id,
-        exp_setup=exp_setup,
+        exp_setup_form=exp_setup_form,
+        show_dashboard=SHOW_DASHBOARD,
         dashboard_params=dashboard_params)

@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import "bootstrap/wtf.html" as wtf %}
 
 {% block page_content %}
   {{ super() }}
@@ -10,20 +11,11 @@
       </div>
       <!-- experiment information and setup -->
       <h4>Setup</h4>
-      <table class="table table-hover">
-        <thead>
-          <th>Parameters</th>
-          <th>Value</th>
-        </thead>
-        {% for key, val in exp_setup.items() %}
-          <tr>
-            <td>{{key}}</td>
-            <td>{{val}}</td>
-          </tr>
-        {% endfor %}
-      </table>
+      {{ wtf.quick_form(exp_setup_form, form_type='horizontal', horizontal_columns=('sm', 3, 9)) }}
+
       <hr>
       <h4>Configuration</h4>
+      <hr>
       <!-- expeirment SAS image -->
       <!-- expeirment SAS profile (curves) -->
       <!-- expeirment CorMapAnalysis -->
@@ -31,15 +23,16 @@
       <!-- expeirment guinier fitting analysis -->
       <!-- experiment Pair-wise distribution analysis (GNOM) -->
       <!-- experiment molecular weight analysis -->
-      {% for dp in dashboard_params %}
-        <hr>
-        <h4 id="{{ dp.graph_type }}">{{ dp.graph_name }}</h4>
-        <div class="row">
-          <!-- </div class="row"> -->
-          <iframe class="dashiframe" src="{{ url_for('dashboard', exp=exp_id, graph_type=dp.graph_type) }}">
-          </iframe>
-        </div>
-      {% endfor %}
+      {% if show_dashboard %}
+        {% for dp in dashboard_params %}
+          <hr>
+          <h4 id="{{ dp.graph_type }}">{{ dp.graph_name }}</h4>
+          <div class="embed-responsive embed-responsive-4by3">
+            <iframe class="embed-responsive-item" src="{{ url_for('/dashboard', exp=exp_id, graph_type=dp.graph_type) }}">
+            </iframe>
+          </div>
+        {% endfor %}
+      {% endif %}
     </div>
 
     <div class="col-sm-3">
@@ -51,13 +44,6 @@
           {% for dp in dashboard_params %}
             <li><a href="#{{ dp.graph_type }}">{{ dp.graph_name }}</a></li>
           {% endfor %}
-          <!-- <li><a href="#sasimage">Images</a></li>
-                      <li><a href="#sasprofile">Profiles</a></li>
-                      <li><a href="#difference">Sequence difference</a></li>
-                      <li><a href="#difference">Sequence difference</a></li>
-                      <li><a href="#guinier">Guinier fitting</a></li>
-                      <li><a href="#gnom">P(r) distribution</a></li>
-                      <li><a href="#mw">Molecular weight</a></li> -->
         </ul>
         <hr>
         <ul class="nav" role="navigation">
@@ -66,8 +52,11 @@
         </ul>
         <hr>
         <ul class="nav" role="navigation">
-          <li><a>Previous experiment</a></li>
-          <li><a>Next experiment</a></li>
+          {% if exp_id != 1 %}
+            <li><a href="{{ url_for('exp_pages.individual_experiment_page', exp_id=exp_id-1) }}">Previous experiment</a></li>
+          {% endif %}
+          <!-- TODO: Add last experiment criterion -->
+          <li><a href="{{ url_for('exp_pages.individual_experiment_page', exp_id=exp_id+1) }}">Next experiment</a></li>
         </ul>
       </nav>
     </div>

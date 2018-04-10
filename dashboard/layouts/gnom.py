@@ -7,26 +7,11 @@ import dash_core_components as dcc
 import dash_html_components as html
 
 from .datamodel import raw_simulator
-from .style import XLABEL, YLABEL
-
-layout = html.Div(children=[
-    dcc.Graph(
-        id='gnom-graph',
-        figure={
-            'data': [],
-            'layout': {
-                'height': 500,
-                'hovermode': 'closest',
-                'title': 'Subtracted profiles',
-                'xaxis': dict(title=XLABEL['distance']),
-                'yaxis': dict(title=YLABEL['pr']),
-            }
-        },
-    ),
-])
+from .style import XLABEL, YLABEL, TITLE
 
 
-def get_gnom(exp):
+def _get_default_layout(exp):
+
     file_list = glob.glob(
         os.path.join(
             raw_simulator.get_raw_settings_value('GnomFilePath'), '*.out'))
@@ -42,6 +27,23 @@ def get_gnom(exp):
         'name': each_iftm.getParameter('filename')
     } for each_iftm in iftm_list]
 
-    layout.children[0].figure['data'] = data
-
+    layout = html.Div(children=[
+        dcc.Graph(
+            id='gnom-graph',
+            figure={
+                'data': data,
+                'layout': {
+                    'height': 500,
+                    'hovermode': 'closest',
+                    'title': TITLE['pdf'],
+                    'xaxis': dict(title=XLABEL['pdf']),
+                    'yaxis': dict(title=YLABEL['pdf']),
+                }
+            },
+        ),
+    ])
     return layout
+
+
+def get_gnom(exp):
+    return _get_default_layout(exp)
