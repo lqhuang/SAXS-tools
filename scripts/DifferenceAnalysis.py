@@ -38,9 +38,10 @@ def get_data_dict(dat_file, smooth=False):
     data_dict['q'] = q
     if smooth:
         data_dict['I'] = dat.smooth_curve(intensity, window_length=25, polyorder=5)
+        data_dict['err'] = dat.smooth_curve(error, window_length=25, polyorder=5)
     else:
         data_dict['I'] = intensity
-    data_dict['E'] = error
+        data_dict['err'] = error
     return data_dict
 
 
@@ -115,12 +116,15 @@ class DifferenceAnalysis(object):
     XLABEL['porod'] = r'$q^4$ $(\mathrm{\AA^{-4}})$'
     YLABEL = dict()
     YLABEL['I'] = r'Intensity (arb. units.)'
+    YLABEL['err'] = r'Error of Intensity (arb. units.)'
     YLABEL['log_I'] = r'$\log(I)$'
     YLABEL['guinier'] = r'$\ln(I(q))$'
     YLABEL['kratky'] = r'$I(q) \cdot q^2$'
     YLABEL['porod'] = r'$I(q) \cdot q^4$'
     YLABEL['relative_diff'] = r'Relative Ratio (%)'
     YLABEL['absolute_diff'] = r'Absolute Difference (arb. units.)'
+    YLABEL['err_relative_diff'] = r'Relative Ratio (%)'
+    YLABEL['err_absolute_diff'] = r'Absolute Difference (arb. units.)'
 
     # ----------------------------------------------------------------------- #
     #                         CONSTRUCTOR METHOD                              #
@@ -163,7 +167,7 @@ class DifferenceAnalysis(object):
         # read buffer
         buffer_dict = dict()
         if buffer_dat:
-            buffer_dict['q'], buffer_dict['I'], buffer_dict['E'] = dat.load_RAW_dat(buffer_dat)
+            buffer_dict['q'], buffer_dict['I'], buffer_dict['err'] = dat.load_RAW_dat(buffer_dat)
         else:
             buffer_dat = [fname for fname in file_list \
                           if 'buffer' in fname.split(os.path.sep)[-1].lower()]
@@ -203,6 +207,7 @@ class DifferenceAnalysis(object):
                 data_dict['I'], data_dict['scaling_factor'] = \
                     dat.scale_curve((data_dict['q'], data_dict['I']), (ref_q, ref_I),
                                     qmin=scale_qmin, qmax=scale_qmax, inc_factor=True)
+                data_dict['err'] *= data_dict['scaling_factor']
                 print('For {0} file, the scaling factor is {1}.'.format(
                     data_dict['filename'], data_dict['scaling_factor']))
         return cls(data_dict_list, file_list=subtracted_dat_list)
@@ -294,6 +299,28 @@ class DifferenceAnalysis(object):
                           data_dict['filename'], baseline_dict['filename']))
                 baseline_interp_I = np.interp(data_dict['q'], baseline_dict['q'], baseline_dict['I'])
                 data_dict['absolute_diff'] = data_dict['I'] - baseline_interp_I
+
+    def calc_error_relative_diff(self, baseline_index=1, baseline_dat=None):
+        if not baseline_dat:
+            baseline_dict = copy.deepcopy(self.data_dict_list[baseline_index-1])
+        else:
+            if baseline_dat in self.file_list:
+                baseline_dict = copy.deepcopy(self.data_dict_list[self.file_list.index(baseline_dat)])
+            else:
+                baseline_dict = get_data_dict(baseline_dat)
+        base_q_length = baseline_dict['q'].shape[0]
+        for data_dict in self.data_dict_list:
+            if data_dict['q'].shape[0] == base_q_length:
+                data_dict['err_relative_diff'] = (data_dict['err'] - baseline_dict['err']) / baseline_dict['err']
+            else:
+                # length of difference should be the same with length of q(for plotting figures)
+                # hence interpolate baseline instead of data dat.
+                print('Warning: 1D length of two dat files {0} and {1} is different. ' \
+                      'Try to interpolate curve to get difference.'.format(
+                          data_dict['filename'], baseline_dict['filename']))
+                baseline_interp_I = np.interp(data_dict['q'], baseline_dict['q'], baseline_dict['err'])
+                data_dict['err_relative_diff'] = (data_dict['err']-baseline_interp_I) / baseline_interp_I
+            data_dict['err_relative_diff'] *= 100
 
     def eval_datcrop(self, qmin, qmax):
         """
@@ -762,3 +789,138 @@ class DifferenceAnalysis(object):
 
         if display and self.rg_found:
             plt.show()
+
+    def plot_error(self, dash_line_index=(None,),
+                      crop=False, crop_qmin=0.0, crop_qmax=-1.0,
+                      display=True, save=False, filename=None, legend_loc='left', directory=None,
+                      axes=None):
+        """
+        SAXS error profiles
+        """
+        self.PLOT_NUM += 1
+        # ++++++++++++++++++++++++++++++ PLOT +++++++++++++++++++++++++++ #
+        self.update_linestyle(dash_line_index=dash_line_index)
+        if axes is not None:
+            ax = axes
+        else:
+            fig = plt.figure(self.PLOT_NUM)
+            ax = plt.subplot(111)
+        for data_dict in self.data_dict_list:
+            crop_slice = dat.get_crop_slice(data_dict['q'], crop, crop_qmin, crop_qmax)
+            ax.plot(data_dict['q'][crop_slice], data_dict['err'][crop_slice],
+                    label=data_dict['label'],
+                    linestyle=data_dict['linestyle'], linewidth=1)
+        plot_x_zeros = False
+        if plot_x_zeros:
+            crop_slice = dat.get_crop_slice(self.data_dict_list[0]['q'], crop, crop_qmin, crop_qmax)
+            zeros_x = self.data_dict_list[0]['q'][crop_slice]
+            zeros_y = np.zeros_like(zeros_x)
+            ax.plot(zeros_x, zeros_y, '--r')
+        ax.set_xlabel(self.XLABEL['q'], fontdict=self.PLOT_LABEL)
+        ax.set_ylabel(self.YLABEL['err'], fontdict=self.PLOT_LABEL)
+        ax.set_title(r'SAXS Error Profiles for Subtracted Curves')
+        if axes is None:
+            box = ax.get_position()
+            ax.set_position([box.x0, box.y0, box.width * 1.1, box.height])
+            if self.num_curves < 5:
+                lgd = ax.legend(loc=0, frameon=False, prop={'size': self.LEGEND_SIZE})
+            else:
+                if 'left' in legend_loc:
+                    lgd = ax.legend(loc='center left', bbox_to_anchor=(1, 0.5),
+                                    frameon=False, prop={'size': self.LEGEND_SIZE})
+                elif 'down' in legend_loc:
+                    lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15),
+                                    frameon=False, prop={'size': self.LEGEND_SIZE})
+        # else:
+        #     lgd = ax.legend(loc='upper right', frameon=False, prop={'size': self.LEGEND_SIZE})
+
+        # +++++++++++++++++++++ SAVE AND/OR DISPLAY +++++++++++++++++++++ #
+        if not filename:
+            filename = 'saxs_error_profiles.png'
+        if axes is None:
+            if save:
+                if directory:
+                    if not os.path.exists(directory):
+                        os.mkdir(directory)
+                    fig_path = os.path.join(directory, filename)
+                else:
+                    fig_path = filename
+                fig.savefig(fig_path, dpi=self.DPI, transparent=False,
+                            bbox_extra_artists=(lgd,), bbox_inches='tight')
+            if display:
+                # ax.legend().draggable()
+                fig.tight_layout()
+                plt.show()
+
+    def plot_error_difference(self, difference,
+                        crop=False, crop_qmin=0.0, crop_qmax=-1.0,
+                        baseline_index=1, baseline_dat=None, dash_line_index=(None,),
+                        display=True, save=False, filename=None, legend_loc='left', directory=None,
+                        axes=None):
+        """
+        Sequence Difference Analysis
+        """
+        self.PLOT_NUM += 1
+
+        # +++++++++++++++++++ CALCULATE DIFFERENCE ++++++++++++++++++++++ #
+        diff_mode = str(difference).lower() + '_diff'
+        try:
+            eval('self.calc_error_{0}(baseline_index={1}, baseline_dat={2})'.format(
+                diff_mode, baseline_index, baseline_dat))
+        except NameError:
+            raise ValueError('Error: unsupport mode of difference analysis. Please check again.')
+
+        # ++++++++++++++++++++++++++++++ PLOT +++++++++++++++++++++++++++ #
+        self.update_linestyle(dash_line_index=dash_line_index)
+        if axes is not None:
+            ax = axes
+        else:
+            fig = plt.figure(self.PLOT_NUM)
+            ax = plt.subplot(111)
+        for data_dict in self.data_dict_list:
+            crop_slice = dat.get_crop_slice(data_dict['q'], crop, crop_qmin, crop_qmax)
+            ax.plot(data_dict['q'][crop_slice], data_dict['err_'+diff_mode][crop_slice],
+                    label=data_dict['label'],
+                    linestyle=data_dict['linestyle'], linewidth=1)
+        ylim = ax.get_ylim()
+        if ylim[0] >= -2.0:
+            lower_lim = -2.0
+        else:
+            lower_lim = ylim[0]
+        if ylim[1] <= 2.0:
+            upper_lim = 2.0
+        else:
+            upper_lim = ylim[1]
+        ax.set_ylim([lower_lim, upper_lim])
+        ax.set_xlabel(self.XLABEL['q'], fontdict=self.PLOT_LABEL)
+        ax.set_ylabel(self.YLABEL['err_'+diff_mode], fontdict=self.PLOT_LABEL)
+        ax.set_title(r'Error {0} Difference Analysis'.format(difference.lower().capitalize()))
+        if axes is None:
+            box = ax.get_position()
+            ax.set_position([box.x0, box.y0, box.width * 1.1, box.height])
+            if 'left' in legend_loc:
+                lgd = ax.legend(loc='center left', bbox_to_anchor=(1, 0.5),
+                                frameon=False, prop={'size': self.LEGEND_SIZE})
+            elif 'down' in legend_loc:
+                lgd = ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15),
+                                frameon=False, prop={'size': self.LEGEND_SIZE})
+        else:
+            lgd = ax.legend(loc='upper right', frameon=False, prop={'size': self.LEGEND_SIZE})
+
+        # +++++++++++++++++++++ SAVE AND/OR DISPLAY +++++++++++++++++++++ #
+        if not filename:
+            filename = '{0}.png'.format('_'.join(['error', diff_mode]))
+        if axes is None:
+            if save:
+                if directory:
+                    if not os.path.exists(directory):
+                        os.mkdir(directory)
+                    fig_path = os.path.join(directory, filename)
+                else:
+                    fig_path = filename
+                fig.savefig(fig_path, dpi=self.DPI, transparent=False,
+                            bbox_extra_artists=(lgd,), bbox_inches='tight')
+            if display:
+                # ax.legend().draggable()
+                # fig.tight_layout()
+                plt.show()

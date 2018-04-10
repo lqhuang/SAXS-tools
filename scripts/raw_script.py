@@ -99,9 +99,17 @@ def main():
         else:
             sample_frames.append(each_sasm)
 
-    if buffer_frames:
+    if buffer_frames and len(buffer_frames) > 1:
         average_buffer_sasm = raw_simulator.averageSASMs(
             buffer_frames[num_skip:])
+    elif buffer_frames and len(
+            buffer_frames) == 1 and buffer_frames[0].startswith('A_'):
+        # no buffer in `Processed` directory but A_buffer exist in `Processed`.
+        # It's a backward compatibility for previous experiment data.
+        # These raw data only saved average A_buffer_file in 'Valid_Frames'
+        # or 'Frames' directory which has been renamed as `Processsed`
+        # directory and save all buffer frames
+        average_buffer_sasm = raw_simulator.loadSASMs(buffer_frames)[0]
     else:
         avg_buffer_pattern = os.path.join(raw_settings['AveragedFilePath'],
                                           '*buffer*.dat')

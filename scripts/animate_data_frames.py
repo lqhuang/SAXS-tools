@@ -10,6 +10,9 @@ import matplotlib.animation as animation
 from mpl_toolkits.axes_grid1.axes_divider import make_axes_locatable
 from PIL import Image
 
+ROOT_DIR = os.path.dirname(os.path.dirname(__file__))
+if ROOT_DIR not in sys.path:
+    sys.path.append(ROOT_DIR)
 from RAW import RAWSimulator
 
 
@@ -17,8 +20,8 @@ def boxsize(array_shape, center, radius=100):
     if len(center) != len(array_shape):
         raise ValueError(
             'Length of center must be the same with dimension of array')
-    size = (np.minimum(curr_center + radius, max_len) -
-            np.maximum(curr_center - radius, 0)
+    size = (np.minimum(curr_center + radius, max_len, dtype=int) -
+            np.maximum(curr_center - radius, 0, dtype=int)
             for curr_center, max_len in zip(center, array_shape))
     return tuple(size)
 
@@ -46,8 +49,8 @@ def boxslice(array, center, radius=100):
             'Length of center must be the same with dimension of array')
     slicer = [
         slice(
-            np.maximum(curr_center - radius, 0),
-            np.minimum(curr_center + radius, max_len),
+            np.maximum(curr_center - radius, 0, dtype=int),
+            np.minimum(curr_center + radius, max_len, dtype=int),
         ) for curr_center, max_len in zip(center, array.shape)
     ]
     return array[slicer]
@@ -63,37 +66,8 @@ def animate_frames(framefiles,
                    show=False,
                    save_to_video=True,
                    animation_name=None):
-    """[summary]
-    
-    Parameters:
-    ----------
-    framefiles : {[type]}
-        [description]
-    mask : {[type]}
-        [description]
-    image_dim : {[type]}
-        [description]
-    center : {[type]}
-        [description]
-    radius : {int}, optional
-        [description] (the default is 200, which [default_description])
-    vmin : {int}, optional
-        [description] (the default is 0, which [default_description])
-    vmax : {int}, optional
-        [description] (the default is 400, which [default_description])
-    show : {bool}, optional
-        [description] (the default is False, which [default_description])
-    save_to_video : {bool}, optional
-        [description] (the default is True, which [default_description])
-    animation_name : {[type]}, optional
-        [description] (the default is None, which [default_description])
-    
-    Returns
-    -------
-    [type]
-        [description]
+    """animate sas data frames
     """
-
     boxshape = boxsize(image_dim, center, radius)
     # stack_shape: num_images, row, col
     stack_shape = [len(framefiles)] + list(boxshape)
@@ -105,31 +79,18 @@ def animate_frames(framefiles,
                 np.fliplr(np.asarray(tiff, dtype=float)), center,
                 radius) * boxed_mask
 
-    # for img in image_stack:
-    #     img /= np.mean(img[np.bool_(boxed_mask)])
-
-    dist = [80] * 100
-
-    # for i in range(6):
-    #     dist[i] = 170
-
-    # for i in range(1, 6):
-    #     dist[i+5] = 170 - ( (170 - 80) * (i/5) )
-
     fig, ax = plt.subplots()
     ax_divider = make_axes_locatable(ax)
     cax = ax_divider.append_axes('right', size='7%', pad='2%')
     im = ax.imshow(
         image_stack[0], cmap='jet', vmin=vmin, vmax=vmax, animated=True)
-    title = ax.set_title('current frame: {}, magnet distance {:.2f} mm'.format(
-        str(1).zfill(3), dist[0]))
+    title = ax.set_title('current frame: {}'.format(str(1).zfill(3)))
     fig.colorbar(im, cax=cax)
     fig.tight_layout()
 
     def update_im(fr):
         im.set_data(image_stack[fr])
-        title.set_text('current frame: {}, magnet distance: {:.2f} mm'.format(
-            str(fr + 1).zfill(3), dist[fr]))
+        title.set_text('current frame: {}'.format(str(fr + 1).zfill(3)))
         fig.canvas.draw_idle()
         # return a sequence of artists, not a single artist
         return im,
@@ -161,9 +122,9 @@ def animate_frames(framefiles,
 
 def gen_animation(raw_settings, image_filenames):
 
-    x_center = raw_settings.get('Xcenter')[0]
-    y_center = raw_settings.get('Ycenter')[0]
-    image_dim = raw_settings.get('MaskDimension')[0]
+    x_center = int(raw_settings.get('Xcenter'))
+    y_center = int(raw_settings.get('Ycenter'))
+    image_dim = tuple(int(v) for v in raw_settings.get('MaskDimension'))
 
     col_center = x_center
     row_center = image_dim[0] - y_center
@@ -171,7 +132,7 @@ def gen_animation(raw_settings, image_filenames):
 
     mask = raw_settings.get('BeamStopMask')
     if mask is None:
-        mask = raw_settings.get('Masks')['BeamStopMask'][0]
+        mask = raw_settings.get('Masks')['BeamStopMask']
 
     if not image_filenames:
         raise FileNotFoundError('No image files found.')
@@ -181,17 +142,18 @@ def gen_animation(raw_settings, image_filenames):
         mask,
         image_dim,
         center,
-        vmax=30,
+        vmax=200,
         save_to_video=True,
         # show=True,
-        animation_name='201612_EXP27_dynamics')
+        animation_name='animation')
 
 
 def main():
     raw_cfg_path = sys.argv[1]
     image_directory = sys.argv[2]
 
-    raw_settings = RAWSimulator(raw_cfg_path)
+    raw_simulator = RAWSimulator(raw_cfg_path)
+    raw_settings = raw_simulator.get_raw_settings()
     image_format = '.tif'
 
     image_filenames = sorted(

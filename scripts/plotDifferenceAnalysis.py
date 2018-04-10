@@ -141,6 +141,20 @@ def plot_DifferenceAnalysis(root_directory,
         crop_qmax=crop_qmax,
         filename=exp_prefix + '_absolute_diff.' + fig_format,
         **kwargs)
+    seq_obj.plot_error(
+        crop=crop,
+        crop_qmin=crop_qmin,
+        crop_qmax=crop_qmax,
+        filename=exp_prefix + '_saxs_error_profiles.' + fig_format,
+        **kwargs)
+    seq_obj.plot_error_difference(
+        'relative',
+        baseline_index=baseline_index,
+        crop=crop,
+        crop_qmin=crop_qmin,
+        crop_qmax=crop_qmax,
+        filename=exp_prefix + '_error_relative_diff.' + fig_format,
+        **kwargs)
     plt.close('all')
 
     try:
