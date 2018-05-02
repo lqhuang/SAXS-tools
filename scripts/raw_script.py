@@ -3,10 +3,11 @@ from __future__ import print_function, division
 import os
 import sys
 import glob
-
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if ROOT_DIR not in sys.path:
     sys.path.append(ROOT_DIR)
+
+import yaml
 
 from RAW import RAWSimulator
 from saxsio import dat
@@ -25,23 +26,32 @@ def remove_processed(data_list, processed_path):
 
 def main():
     # TODO: complete this scripts
-    exp_root_path = sys.argv[2]
+    config_file = sys.argv[1]
+    # exp_config = {
+    #     'raw_cfg_path': sys.argv[1],
+    #     'log_file': os.path.join(exp_root_path, 'log.txt'),
+    #     'source_data_path': os.path.join(exp_root_path, 'Data'),
+    #     'overwrite': False,
+    #     'SKIP_FRAMES': 1,
+    #     'WINDOW_SIZE': 5,
+    #     'SCALE_QMIN': 0.23,
+    #     'SCALE_QMAX': 0.26,
+    # }
+    with open(config_file, 'r', encoding='utf-8') as fstream:
+        exp_config = yaml.load(fstream)
 
-    exp_config = {
-        'raw_cfg_path': sys.argv[1],
-        'log_file': os.path.join(exp_root_path, 'log.txt'),
-        'source_data_path': os.path.join(exp_root_path, 'Data'),
-        'overwrite': False,
-        'SKIP_FRAMES': 1,
-        'WINDOW_SIZE': 5,
-        'SCALE_QMIN': 0.23,
-        'SCALE_QMAX': 0.26,
-    }
+    raw_cfg_path = exp_config.get('raw_cfg_path', None)
+    exp_root_path = exp_config.get('exp_root_path', None)
+    source_data_path = os.path.join(exp_root_path, 'Data')
+    num_skip = exp_config.get('skip_frames', 0)
+    num_frames_per_group = exp_config.get('window_size', 5)
 
-    num_skip = exp_config['SKIP_FRAMES']
-    num_frames_per_group = exp_config['WINDOW_SIZE']
-    scale_qmin = exp_config['SCALE_QMIN']
-    sclae_qmax = exp_config['SCALE_QMAX']
+    alignment = exp_config.get('scale', 'statistics')
+    # alignment = 'statistics'
+    # alignment = 'ionchamber'
+    # alignment = None
+    scale_qmin = exp_config.get('scale_qmin', 0.23)
+    sclae_qmax = exp_config.get('scale_qmax', 0.26)
 
     raw_settings = {
         'ProcessedFilePath': os.path.join(exp_root_path, 'Processed'),
@@ -66,17 +76,17 @@ def main():
         os.makedirs(raw_settings['GnomFilePath'])
 
     raw_simulator = RAWSimulator(
-        exp_config['raw_cfg_path'],
+        raw_cfg_path,
         # exp_config['log_file'],
         do_analysis=False,
     )
     raw_simulator.set_raw_settings(**raw_settings)
 
     img_ext = 'tif'
-    file_pattern = os.path.join(exp_config['source_data_path'], '*.' + img_ext)
+    file_pattern = os.path.join(source_data_path, '*.' + img_ext)
     source_data_list = sorted(glob.glob(file_pattern))
 
-    if not exp_config['overwrite']:
+    if not exp_config.get('overwrite', False):
         source_data_list = remove_processed(source_data_list,
                                             raw_settings['ProcessedFilePath'])
 
@@ -123,15 +133,11 @@ def main():
             average_buffer_sasm = raw_simulator.loadSASMs(avg_buffer_list)[0]
 
     # TODO: save figures of middle process for debugging before alignment and after alignment
-    alignment = 'statistics'
-    # alignment = 'ionchamber'
-    # alignment = None
     if alignment == 'statistics':
         raw_simulator.alignSASMs(sample_frames[num_skip], sample_frames,
                                  (scale_qmin, sclae_qmax))
     elif alignment == 'ionchamber':
-        ionchamber_pattern = os.path.join(exp_config['source_data_path'],
-                                          '*.[Ii]o*chamber')
+        ionchamber_pattern = os.path.join(source_data_path, '*.[Ii]o*chamber')
         ionchamber_list = sorted(glob.glob(ionchamber_pattern))
         for ion_name in reversed(ionchamber_list):
             if 'buffer' in os.path.basename(ion_name):
@@ -148,18 +154,21 @@ def main():
             each / ionchamber_factors[0] for each in ionchamber_factors
         ]
         print('\n'.join(str(each) for each in scaling_factors))
-    # else:
-    #     # Not scale. Do nothing
-    #     pass
+    else:
+        # Not scale. Do nothing
+        pass
 
-    sample_frames_by_group = [
-        sample_frames[i:i + num_frames_per_group]
-        for i in range(0, len(sample_frames), num_frames_per_group)
-    ]
-    average_sasm_list = [
-        raw_simulator.averageSASMs(per_group[num_skip:])
-        for per_group in sample_frames_by_group
-    ]
+    if num_frames_per_group > 1:
+        sample_frames_by_group = [
+            sample_frames[i:i + num_frames_per_group]
+            for i in range(0, len(sample_frames), num_frames_per_group)
+        ]
+        average_sasm_list = [
+            raw_simulator.averageSASMs(per_group[num_skip:])
+            for per_group in sample_frames_by_group
+        ]
+    else:
+        average_sasm_list = sample_frames
 
     if alignment == 'ionchamber':
         raw_simulator.scaleSASMs(average_sasm_list, scaling_factors)
