@@ -21,3 +21,8 @@ def blog_index():
 @index.route('/export')
 def export():
     return render_template('export.html')
+
+
+@index.route('/timer')
+def timer():
+    return render_template('timer.html')

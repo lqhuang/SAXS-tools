@@ -25,5 +25,6 @@ dash_app.layout = html.Div(children=[
     html.Link(rel='stylesheet', href='/static/css/bWLwgP.css'),
     html.Link(rel='stylesheet', href='/static/css/dash.css'),
     dcc.Location(id='url', refresh=False),
-    html.Div(id='page-content')
+    html.Div(id='page-info', style={'display': 'none'}),
+    html.Div(id='page-content'),
 ])

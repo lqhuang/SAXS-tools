@@ -1,60 +1,83 @@
 from __future__ import print_function, division
 
-import numpy as np
+import json
+
 import dash_core_components as dcc
 import dash_html_components as html
+from dash.dependencies import Input, Output
 
 from .style import GRAPH_GLOBAL_CONFIG, INLINE_LABEL_STYLE
+from ..base import dash_app
+from ..datamodel import raw_simulator
 
 _PLOT_OPTIONS = [{
-    'label': 'Adj P(>C) value',
-    'value': 'p_value',
+    'label': 'Adj Pr(>C) value',
+    'value': 'adj Pr(>C)',
 }, {
     'label': 'C value',
-    'value': 'c_value',
+    'value': 'C',
 }]
 
-
-def _get_default_layout(exp):
-    layout = html.Div(children=[
-        dcc.Graph(
-            id='cormap-graph',
-            figure=_get_figure(),
-            config=GRAPH_GLOBAL_CONFIG,
-        ),
-        html.Label('Plot type'),
-        dcc.RadioItems(
-            id='cormap-plot-type',
-            options=_PLOT_OPTIONS,
-            value='p_value',
-            labelStyle=INLINE_LABEL_STYLE,
-        ),
-    ])
-    return layout
-
-
-def _get_figure():
-    z = np.eye(100)
-
-    graph_layout = {
-        'height': 600,
-        'hovermode': 'closest',
-        'title': 'CorMap',
-        'xaxis': dict(title='Frames', scaleanchor='y', constrain='domain'),
-        'yaxis': dict(title='Frames', autorange='reversed')
-    }
-
-    data = [{
-        'type': 'heatmap',
-        'z': z,
-    }]
-
-    figure = {
-        'data': data,
-        'layout': graph_layout,
-    }
-    return figure
+_DEFAULT_LAYOUT = html.Div(children=[
+    dcc.Graph(
+        id='cormap-graph',
+        figure={},
+        config=GRAPH_GLOBAL_CONFIG,
+    ),
+    html.Label('Plot type'),
+    dcc.RadioItems(
+        id='cormap-plot-type',
+        options=_PLOT_OPTIONS,
+        value='adj Pr(>C)',
+        labelStyle=INLINE_LABEL_STYLE,
+    ),
+])
 
 
 def get_cormap(exp):
-    return _get_default_layout(exp)
+    return _DEFAULT_LAYOUT
+
+
+_DEFAULT_FIGURE_LAYOUT = {
+    'height': 550,
+    'hovermode': 'closest',
+    'title': 'CorMap Heatmap',
+    'xaxis': dict(title='Frames', scaleanchor='y', constrain='domain'),
+    'yaxis': dict(title='Frames', autorange='reversed'),
+}
+
+
+@dash_app.callback(
+    Output('cormap-graph', 'figure'),
+    [
+        Input('cormap-plot-type', 'value'),
+        Input('page-info', 'children'),
+    ],
+)
+def _update_figure(plot_type, info_json):
+    exp = json.loads(info_json)['exp']
+    cormap_heatmap = raw_simulator.get_cormap_heatmap(exp, plot_type)
+    colorscale = []
+    if plot_type == 'C':
+        colorscale = 'Jet'
+    else:
+        p_threshold = 0.01  # default
+        colorscale = (
+            (0.0, "#D55E00"),  # orange
+            (p_threshold, "#D55E00"),
+            (p_threshold, "#009E73"),  # green
+            (0.9999, "#009E73"),  # green
+            (1, "#0072B2"),  # blue
+        )
+        # colorbar = dict(
+        #     tickvals = ,
+        #     ticktext = ['adj Pr(>C) < 0.01', '0.01 <= adj Pr(>C) < 1', 'adj Pr(>C) == 1']
+        # )
+    return {
+        'data': [{
+            'type': 'heatmap',
+            'z': cormap_heatmap,
+            'colorscale': colorscale,
+        }],
+        'layout': _DEFAULT_FIGURE_LAYOUT,
+    } # yapf: disable

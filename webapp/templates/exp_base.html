@@ -4,18 +4,18 @@
 {% block page_content %}
   {{ super() }}
   <div class="row">
-    <div class="col-sm-9">
+    <div class="col-sm-9" data-spy="scroll" data-target="#sidebar" data-offset="0">
       <!-- experiment header -->
       <div class="page-header">
         <h1>EXP {{ exp_id }} <small>notes</small></h1>
       </div>
       <!-- experiment information and setup -->
-      <h4>Setup</h4>
-      {{ wtf.quick_form(exp_setup_form, form_type='horizontal', horizontal_columns=('sm', 3, 9)) }}
-
+      <h4 id="setup">Setup</h4>
+      {{ wtf.quick_form(exp_setup_form, form_type='horizontal', horizontal_columns=('sm', 3, 9), id='setup-form') }}
       <hr>
-      <h4>Configuration</h4>
-      <hr>
+      <h4 id="configuration">Configuration</h4>
+      {{ wtf.quick_form(layouts_checkbox, form_type='horizontal', id=False) }} <!-- form_type='inline' -->
+      <!-- <hr> -->
       <!-- expeirment SAS image -->
       <!-- expeirment SAS profile (curves) -->
       <!-- expeirment CorMapAnalysis -->
@@ -36,7 +36,7 @@
     </div>
 
     <div class="col-sm-3">
-      <nav class="navbar">
+      <nav id="sidebar" class="navbar" data-spy="affix" data-offset-top="285" style="top: 0">
         <!-- side bar -->
         <ul class="nav" role="navigation">
           <li><a href="#setup">Setup</a></li>
@@ -53,12 +53,37 @@
         <hr>
         <ul class="nav" role="navigation">
           {% if exp_id != 1 %}
-            <li><a href="{{ url_for('exp_pages.individual_experiment_page', exp_id=exp_id-1) }}">Previous experiment</a></li>
+            <li class="previous">
+              <a href="{{ url_for('exp_pages.individual_experiment_page', exp_id=exp_id-1) }}">
+                Previous experiment
+              </a>
+            </li>
           {% endif %}
           <!-- TODO: Add last experiment criterion -->
-          <li><a href="{{ url_for('exp_pages.individual_experiment_page', exp_id=exp_id+1) }}">Next experiment</a></li>
+          <li class="next">
+            <a href="{{ url_for('exp_pages.individual_experiment_page', exp_id=exp_id+1) }}">
+              Next experiment
+            </a>
+          </li>
         </ul>
       </nav>
     </div>
   </div>
+{% endblock %}
+
+{% block scripts %}
+  {{ super() }}
+  <script>
+    $('#setup-form').submit(function (evt) {
+      $.ajax({
+        type: 'post',
+        // url: '?',
+        data: $(this).serialize(),
+        success: function () {
+          alert('Setup has been saved.');
+        }
+      });
+      evt.preventDefault(); //prevents the default refresh action
+    })
+  </script>
 {% endblock %}

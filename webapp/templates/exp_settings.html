@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% import "bootstrap/wtf.html" as wtf %}
+
+{% block page_content %}
+  <!-- <div class="row"> -->
+  <ul class="nav nav-tabs" style="margin-bottom: 1%">
+    <li role="presentation" class="active">
+      <a data-toggle="tab" href="#general">General</a>
+    </li>
+    <li role="presentation">
+      <a data-toggle="tab" href="#sample_list">Sample list</a>
+    </li>
+  </ul>
+
+  <div class="tab-content">
+    <div id="general" class="tab-pane active">
+      {{ wtf.quick_form(exp_settings_form, form_type='horizontal', horizontal_columns=('sm', 3, 9), id='settings-form') }}
+    </div>
+    <div id="sample_list" class="tab-pane">
+      {{ wtf.quick_form(samples_info_form, form_type='horizontal', horizontal_columns=('sm', 3, 9), id='samples-form') }}
+    </div>
+  </div>
+  <!-- </div> -->
+{% endblock %}
+
+
+{% block scripts %}
+  {{ super() }}
+  <script>
+    $('#settings-form').submit(function (evt) {
+      $.ajax({
+        type: 'post',
+        // url: '?',
+        data: $('#settings-form').serialize(),
+        success: function () {
+          alert('Settings have been saved.');
+        }
+      });
+      evt.preventDefault(); //prevents the default refresh action
+    })
+  </script>
+{% endblock %}
