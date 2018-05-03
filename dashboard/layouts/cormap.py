@@ -57,27 +57,34 @@ _DEFAULT_FIGURE_LAYOUT = {
 def _update_figure(plot_type, info_json):
     exp = json.loads(info_json)['exp']
     cormap_heatmap = raw_simulator.get_cormap_heatmap(exp, plot_type)
-    colorscale = []
+
     if plot_type == 'C':
         colorscale = 'Jet'
+        colorbar = dict()
     else:
         p_threshold = 0.01  # default
         colorscale = (
             (0.0, "#D55E00"),  # orange
             (p_threshold, "#D55E00"),
             (p_threshold, "#009E73"),  # green
-            (0.9999, "#009E73"),  # green
+            (0.99999999, "#009E73"),
             (1, "#0072B2"),  # blue
         )
-        # colorbar = dict(
-        #     tickvals = ,
-        #     ticktext = ['adj Pr(>C) < 0.01', '0.01 <= adj Pr(>C) < 1', 'adj Pr(>C) == 1']
-        # )
+        colorbar = dict(
+            tickmode='array',
+            tickvals=(0, (p_threshold + 1.0) / 2.0, 1.0),
+            ticktext=(
+                'adj Pr(>C) < 0.01',
+                '0.01 <= adj Pr(>C) < 1',
+                'adj Pr(>C) == 1',
+            ),
+        )
     return {
         'data': [{
             'type': 'heatmap',
             'z': cormap_heatmap,
             'colorscale': colorscale,
+            'colorbar': colorbar,
         }],
         'layout': _DEFAULT_FIGURE_LAYOUT,
     } # yapf: disable

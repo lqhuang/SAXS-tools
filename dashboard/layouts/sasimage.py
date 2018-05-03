@@ -19,7 +19,10 @@ _PLOT_OPTIONS = [{
     'value': 'contour'
 }]
 
-_DEFAULT_FIGURE_LAYOUT = {'yaxis': dict(autorange='reversed')}
+_DEFAULT_FIGURE_LAYOUT = {
+    'xaxis': dict(title='pixel', scaleanchor='y', constrain='domain'),
+    'yaxis': dict(title='pixel', autorange='reversed'),
+}
 
 
 def _six_columns(suffix: str):

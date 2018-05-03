@@ -27,8 +27,8 @@
         {% for dp in dashboard_params %}
           <hr>
           <h4 id="{{ dp.graph_type }}">{{ dp.graph_name }}</h4>
-          <div class="embed-responsive embed-responsive-4by3">
-            <iframe class="embed-responsive-item" src="{{ url_for('/dashboard', exp=exp_id, graph_type=dp.graph_type) }}">
+          <div class="dash-embed-responsive">
+            <iframe class="dash-embed-responsive-item" src="{{ url_for('/dashboard', exp=exp_id, graph_type=dp.graph_type) }}">
             </iframe>
           </div>
         {% endfor %}

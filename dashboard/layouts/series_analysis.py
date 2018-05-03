@@ -27,12 +27,12 @@ _DIFF_OPTIONS = [{
     'value': 'error_relative_diff',
 }]
 
-_CALC_FUNCTION = dict()
-_CALC_FUNCTION['relative_diff'] = lambda x, ref: (x.i - ref.i) / ref.i
-_CALC_FUNCTION['absolute_diff'] = lambda x, ref: x.i - ref.i
-_CALC_FUNCTION['error'] = lambda x, ref: x.err
-_CALC_FUNCTION[
-    'error_relative_diff'] = lambda x, ref: (x.err - ref.err) / ref.err
+_CALC_FUNCTION = {
+    'relative_diff': lambda x, ref: (x.i - ref.i) / ref.i * 100.0,
+    'absolute_diff': lambda x, ref: x.i - ref.i,
+    'error': lambda x, ref: x.err,
+    'error_relative_diff': lambda x, ref: (x.err - ref.err) / ref.err * 100.0,
+}
 
 _DEFAULT_PLOT_TYPE = 'relative_diff'
 
@@ -72,6 +72,14 @@ _DEFAULT_LAYOUT = html.Div(children=[
         step=0.01,
         value=[0.0, 0.14],
     ),
+    html.Label('Slider for ylim'),
+    dcc.RangeSlider(
+        id='difference-ylim',
+        min=-150.0,
+        max=150.0,
+        step=1.0,
+        value=[-50.0, 50.0],
+    ),
     # html.Label('Parameters for smoothing'),
     # html.Label('window length'),
     # dcc.Input(
@@ -90,7 +98,7 @@ def get_series_analysis(exp):
     return _DEFAULT_LAYOUT
 
 
-def _get_figure(exp, plot_type, ref_idx, xaxis_scale, xlim=None):
+def _get_figure(exp, plot_type, ref_idx, xaxis_scale, xlim=None, ylim=None):
 
     sasm_list = raw_simulator.get_sasprofile(exp)
     if 'diff' in plot_type.lower():
@@ -102,6 +110,8 @@ def _get_figure(exp, plot_type, ref_idx, xaxis_scale, xlim=None):
     yaxis = dict(title=YLABEL[plot_type])
     if xlim:
         xaxis['range'] = xlim
+    if ylim:
+        yaxis['range'] = ylim
 
     data = [{
         'x': each_sasm.q,
@@ -129,13 +139,14 @@ def _get_figure(exp, plot_type, ref_idx, xaxis_scale, xlim=None):
         Input('difference-ref-selection', 'value'),
         Input('difference-xaxis-scale', 'value'),
         Input('difference-xlim', 'value'),
+        Input('difference-ylim', 'value'),
     ],
     [State('page-info', 'children')],
 )
-def _update_figure(plot_type, ref_idx, xaxis_scale, xlim, info_json):
+def _update_figure(plot_type, ref_idx, xaxis_scale, xlim, ylim, info_json):
     info_dict = json.loads(info_json)
     exp = info_dict['exp']
-    return _get_figure(exp, plot_type, ref_idx, xaxis_scale, xlim)
+    return _get_figure(exp, plot_type, ref_idx, xaxis_scale, xlim, ylim)
 
 
 @dash_app.callback(
