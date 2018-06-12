@@ -4,20 +4,22 @@
   <table class="table table-hover">
     <thead>
       <th>#</th>
+      <th>Directory</th>
       <th>Sample</th>
       <th>Concentration(mg/ml)</th>
       <th>Magnet distance(mm)</th>
       <th>Notes</th>
       <th>More</th>
     </thead>
-      {% for setup in exp_setup_list %}
+      {% for i, (exp_name, setup) in exp_table_list %}
       <tr>
-        <td>{{ setup.number }}</td>
+        <td>{{ i }}</td>
+        <td>{{ exp_name }}</td>
         <td>{{ setup.sample }}</td>
         <td>{{ setup.concentration }}</td>
         <td>{{ setup.magnet_distance }}</td>
-        <td>{{ setup.extra_info }}</td>
-        <td><a href="/exp_pages/exp{{ setup.number }}">Details</a></td>
+        <td>{{ setup.simple_conclusion }}</td>
+        <td><a href="/exp_pages/{{ exp_name }}">Details</a></td>
       </tr>
       {% endfor %}
   </table>

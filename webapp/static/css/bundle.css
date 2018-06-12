@@ -1,0 +1,13 @@
+footer {
+    /* border-top: solid 1px #eee; */
+    color: #aaa;
+    /* or #ccc */
+    background-color: #f7f7f7;
+    font-weight: 300;
+    padding: 40px 0;
+    height: 30px;
+}
+
+textarea {
+    resize: vertical;
+}
