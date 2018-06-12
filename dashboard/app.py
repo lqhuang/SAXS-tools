@@ -10,19 +10,19 @@ from .layouts import (get_sasimage, get_sasprofile, get_series_analysis,
                       get_cormap, get_gnom)
 
 
-def get_graph_layout(exp, layout_type):
+def get_graph_layout(exp_name, layout_type):
     if layout_type == 'sasimage':
-        return get_sasimage(exp)
+        return get_sasimage(exp_name)
     elif layout_type == 'sasprofile':
-        return get_sasprofile(exp)
-    elif layout_type == 'cormap':
-        return get_cormap(exp)
+        return get_sasprofile(exp_name)
+    elif 'cormap' in layout_type:
+        return get_cormap(exp_name)
     elif layout_type == 'series_analysis':
-        return get_series_analysis(exp)
+        return get_series_analysis(exp_name)
     elif layout_type == 'guinier':
         return 'Not Implemented'
     elif layout_type == 'gnom':
-        return get_gnom(exp)
+        return get_gnom(exp_name)
     else:
         return '404'
 
@@ -31,9 +31,9 @@ def get_graph_layout(exp, layout_type):
 def display_page(href):
     if href is not None:
         query_result = parse.parse_qs(parse.urlparse(href).query)
-        exp = query_result['exp'][0]
+        exp_name = query_result['exp'][0]
         layout_type = query_result['graph_type'][0]
-        return get_graph_layout(exp, layout_type)
+        return get_graph_layout(exp_name, layout_type)
     else:
         return '404'
 
@@ -44,7 +44,7 @@ def set_page_info(href):
         query_result = parse.parse_qs(parse.urlparse(href).query)
         exp = query_result['exp'][0]
         layout_type = query_result['graph_type'][0]
-        return json.dumps({'exp': int(exp), 'layout_type': layout_type})
+        return json.dumps({'exp': exp, 'layout_type': layout_type})
     else:
         return '404'
 
