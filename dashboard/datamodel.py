@@ -135,6 +135,51 @@ def boxslice(array, center, radius=100):
     return array[slicer]
 
 
+def subtract_radial_average(img, center, mask=None):
+    """Let image subtract its radial average matrix.
+    
+    Parameters
+    ----------
+    img : numpy.ndarray
+        2D matrix of input image
+    center : tuple of int
+        center of image
+    mask : numpy.ndarray, optional
+        mask for image. 1 means valid area, 0 means masked area.
+        (the default is None, which is no mask.)
+    
+    Returns
+    -------
+    numpy.ndarray
+        return residual image.
+    """
+    assert img.ndim == 2, 'Wrong dimension for image.'
+    assert len(center) == 2, 'Wrong dimension for center.'
+    if mask is not None:
+        masked_img = img * mask
+    else:
+        masked_img = img
+    center = np.round(center)
+    meshgrids = np.indices(img.shape)  # return (xx, yy)
+    # eq: r = sqrt( (x - x_center)**2 + (y - y_center)**2 + (z - z_center)**2 )
+    r = np.sqrt(sum(((grid - c)**2 for grid, c in zip(meshgrids, center))))
+    r = np.round(r).astype(np.int)
+
+    total_bin = np.bincount(r.ravel(), masked_img.ravel())
+    nr = np.bincount(r.ravel())  # count for each r
+    if mask is not None:
+        r_mask = np.zeros(r.shape)
+        r_mask[np.where(mask == 0.0)] = 1
+        nr_mask = np.bincount(r.ravel(), r_mask.ravel())
+        nr = nr - nr_mask
+    radialprofile = np.zeros_like(nr)
+    # r_pixel = np.unique(r.ravel())  # sorted
+    nomaskr = np.where(nr > 0)
+    radialprofile[nomaskr] = total_bin[nomaskr] / nr[nomaskr]
+    residual_img = masked_img - radialprofile[r]  # subtract mean matrix
+    return residual_img
+
+
 class Simulator():
     _CACHED_ANALYSES = [
         'sasimage',
@@ -214,12 +259,8 @@ class Simulator():
         if exp not in self._warehouse['sasimage']:
             self._warehouse['sasimage'][exp] = {}
         if image_fname not in self._warehouse['sasimage'][exp]:
-            image_file_path = os.path.join(
-                self._root_dir,
-                'EXP' + str(exp).zfill(2),
-                self._ImageFileDir,
-                image_fname,
-            )
+            image_file_path = os.path.join(self._root_dir, exp,
+                                           self._ImageFileDir, image_fname)
             self._warehouse['sasimage'][exp][image_fname] = self.load_image(
                 image_file_path)
         return self._warehouse['sasimage'][exp][image_fname]
@@ -260,16 +301,20 @@ class Simulator():
             path of files
         """
         if exp not in self._warehouse[file_type]:
-            file_pattern = os.path.join(
-                self._root_dir, 'EXP' + str(exp).zfill(2),
-                self._FileDir[file_type], '*' + self._FileExt[file_type])
+            file_pattern = os.path.join(self._root_dir, exp,
+                                        self._FileDir[file_type],
+                                        '*' + self._FileExt[file_type])
             file_list = glob.glob(file_pattern)
             file_list.sort()
             # remove buffer file
-            for each in reversed(file_list):
-                if 'buffer' in each.lower():
-                    file_list.remove(each)
+            if 'image' in file_type:
+                for each in reversed(file_list):
+                    if 'buffer' in each.lower():
+                        file_list.remove(each)
             self._warehouse[file_type][exp] = file_list
+        # FIXME: do something (warn or raise error) if file list is empty.
+        # if not self._warehouse[file_type][exp]:
+        #     raise ValueError('No files found.')
         return self._warehouse[file_type][exp]
 
     def reset_exp(self, exp: int):

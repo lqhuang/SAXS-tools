@@ -8,6 +8,7 @@ import dash_html_components as html
 from dash.dependencies import Input, Output, State
 
 from .style import XLABEL, YLABEL, TITLE, INLINE_LABEL_STYLE
+from .style import GRAPH_GLOBAL_CONFIG
 from ..base import dash_app
 from ..datamodel import raw_simulator
 
@@ -23,6 +24,7 @@ _DEFAULT_LAYOUT = html.Div(children=[
     dcc.Graph(
         id='gnom-graph',
         figure={},
+        config=GRAPH_GLOBAL_CONFIG,
     ),
     html.Label('Plot type'),
     dcc.RadioItems(
@@ -67,10 +69,16 @@ def _update_file_selection(info_json):
     exp = json.loads(info_json)['exp']
     file_list = raw_simulator.get_files(exp, 'gnom_files')
     file_basename = (os.path.basename(each) for each in file_list)
-    return [{
-        'label': each,
-        'value': i,
-    } for i, each in enumerate(file_basename)]
+    if file_list:
+        return [{
+            'label': each,
+            'value': i,
+        } for i, each in enumerate(file_basename)]
+    else:
+        return [{
+            'label': 'No GNOM files found.',
+            'value': 0,
+        }]
 
 
 @dash_app.callback(
@@ -84,29 +92,38 @@ def _update_file_selection(info_json):
 def _update_figure(plot_type, iftm_index, info_json):
     exp = json.loads(info_json)['exp']
     iftm_list = raw_simulator.get_gnom(exp)
+    if iftm_list:
+        if plot_type == 'pr_distribution':
+            data = [{
+                'x': each_iftm.r,
+                'y': each_iftm.p,
+                'type': 'line',
+                'name': each_iftm.getParameter('filename')
+            } for each_iftm in iftm_list]
+        elif plot_type == 'fitting':
+            selected_iftm = iftm_list[iftm_index]
+            data = [{
+                'x': selected_iftm.q_orig,
+                'y': selected_iftm.i_orig,
+                'type': 'line',
+                'name': selected_iftm.getParameter('filename'),
+            }, {
+                'x': selected_iftm.q_extrap,
+                'y': selected_iftm.i_extrap,
+                'type': 'line',
+                'name': 'fitting result',
+            }]
 
-    if plot_type == 'pr_distribution':
-        data = [{
-            'x': each_iftm.r,
-            'y': each_iftm.p,
-            'type': 'line',
-            'name': each_iftm.getParameter('filename')
-        } for each_iftm in iftm_list]
-    elif plot_type == 'fitting':
-        selected_iftm = iftm_list[iftm_index]
-        data = [{
-            'x': selected_iftm.q_orig,
-            'y': selected_iftm.i_orig,
-            'type': 'line',
-            'name': selected_iftm.getParameter('filename'),
-        }, {
-            'x': selected_iftm.q_extrap,
-            'y': selected_iftm.i_extrap,
-            'type': 'line',
-            'name': 'fitting result',
-        }]
-
-    return {
-        'data': data,
-        'layout': _DEFAULT_FIGURE_LAYOUT[plot_type],
-    }
+        return {
+            'data': data,
+            'layout': _DEFAULT_FIGURE_LAYOUT[plot_type],
+        }
+    else:
+        return {
+            'layout': {
+                'annotations': [{
+                    'text': 'No GNOM files found.',
+                    'showarrow': False
+                }]
+            },
+        }

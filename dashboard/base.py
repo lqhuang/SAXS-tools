@@ -21,7 +21,7 @@ dash_app.css.config.serve_locally = True
 dash_app.scripts.config.serve_locally = True
 
 dash_app.layout = html.Div(children=[
-    # fix this hard coding path (/static)
+    # FIXME: fix this hard coding path (/static)
     html.Link(rel='stylesheet', href='/static/css/bWLwgP.css'),
     html.Link(rel='stylesheet', href='/static/css/dash.css'),
     dcc.Location(id='url', refresh=False),

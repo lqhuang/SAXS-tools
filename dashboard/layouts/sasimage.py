@@ -19,6 +19,14 @@ _PLOT_OPTIONS = [{
     'value': 'contour'
 }]
 
+_CIRCLE_OPTIONS = [{
+    'label': 'True',
+    'value': True
+}, {
+    'label': 'False',
+    'value': False
+}]
+
 _DEFAULT_FIGURE_LAYOUT = {
     'xaxis': dict(title='pixel', scaleanchor='y', constrain='domain'),
     'yaxis': dict(title='pixel', autorange='reversed'),
@@ -79,17 +87,26 @@ _DEFAULT_LAYOUT = html.Div(children=[
         step=1,
         value=[10, 80],
     ),
+    html.Label('Show extra circle'),
+    dcc.RadioItems(
+        id='sasimage-circle-visible',
+        options=_CIRCLE_OPTIONS,
+        value=False,
+        labelStyle=INLINE_LABEL_STYLE,
+    ),
+    html.Label('Radius of circle'),
+    dcc.Slider(
+        id='sasimage-circle-radius-slider',
+        min=0,
+        max=150,
+        step=1,
+        value=30,
+    ),
 ])
 
 
 def get_sasimage(exp):
     return _DEFAULT_LAYOUT
-
-
-# Update whole figure
-# https://community.plot.ly/t/is-it-possible-to-update-just-layout-not-whole-figure-of-graph-in-callback/8300/4
-# Using state to input source data
-# https://community.plot.ly/t/callback-with-one-of-the-input-matching-the-output-automatic-graph-height/5327/3
 
 
 @dash_app.callback(
@@ -120,6 +137,7 @@ def _update_selction_options_2(file_options):
 def _update_selction_value_1(file_options):
     if isinstance(file_options, list) and file_options:
         return file_options[0]['value']
+    return None
 
 
 @dash_app.callback(
@@ -128,6 +146,7 @@ def _update_selction_value_1(file_options):
 def _update_selction_value_2(file_options):
     if isinstance(file_options, list) and file_options:
         return file_options[-1]['value']
+    return None
 
 
 @dash_app.callback(
@@ -168,18 +187,37 @@ def _set_colorbar_range(image_fname_1, image_fname_2, info_json):
 #     return [lower_bound, upper_bound]
 
 
-@dash_app.callback(
-    Output('sasimage-graph-1', 'figure'),
-    [
-        Input('sasimage-plot-type-1', 'value'),
-        Input('sasimage-file-selection-1', 'value'),
-        Input('sasimage-colorbar-slider', 'value')
-    ],
-    [State('page-info', 'children')],
-)
-def _update_image_1(plot_type, image_fname, colorbar_range, info_json):
+def _update_image(
+        plot_type,
+        image_fname,
+        colorbar_range,
+        show_circle,
+        circle_radius,
+        info_json,
+):
     exp = json.loads(info_json)['exp']
     image = raw_simulator.get_sasimage(exp, image_fname)
+
+    if show_circle:
+        circle_layout = {
+            'shapes': [{  # unfilled circle
+                'type': 'circle',
+                'xref': 'x',
+                'yref': 'y',
+                'x0': center[0] - circle_radius,
+                'y0': center[1] - circle_radius,
+                'x1': center[0] + circle_radius,
+                'y1': center[1] + circle_radius,
+                'line': {
+                    'color': 'rgba(225, 225, 225, 1)',
+                },
+            }],
+        }
+        circle_layout.update(_DEFAULT_FIGURE_LAYOUT)
+        figure_layout = circle_layout
+    else:
+        figure_layout = _DEFAULT_FIGURE_LAYOUT
+
     return {
         'data': [{
             'type': plot_type,
@@ -187,9 +225,39 @@ def _update_image_1(plot_type, image_fname, colorbar_range, info_json):
             'zmin': colorbar_range[0],
             'zmax': colorbar_range[1],
             'colorscale': 'Jet',
+            'ncontours': 5,
         }],
-        'layout': _DEFAULT_FIGURE_LAYOUT,
+        'layout': figure_layout,
     }  # yapf: disable
+
+
+@dash_app.callback(
+    Output('sasimage-graph-1', 'figure'),
+    [
+        Input('sasimage-plot-type-1', 'value'),
+        Input('sasimage-file-selection-1', 'value'),
+        Input('sasimage-colorbar-slider', 'value'),
+        Input('sasimage-circle-visible', 'value'),
+        Input('sasimage-circle-radius-slider', 'value'),
+    ],
+    [State('page-info', 'children')],
+)
+def _update_image_1(
+        plot_type,
+        image_fname,
+        colorbar_range,
+        show_circle,
+        circle_radius,
+        info_json,
+):
+    return _update_image(
+        plot_type,
+        image_fname,
+        colorbar_range,
+        show_circle,
+        circle_radius,
+        info_json,
+    )
 
 
 @dash_app.callback(
@@ -197,20 +265,25 @@ def _update_image_1(plot_type, image_fname, colorbar_range, info_json):
     [
         Input('sasimage-plot-type-2', 'value'),
         Input('sasimage-file-selection-2', 'value'),
-        Input('sasimage-colorbar-slider', 'value')
+        Input('sasimage-colorbar-slider', 'value'),
+        Input('sasimage-circle-visible', 'value'),
+        Input('sasimage-circle-radius-slider', 'value'),
     ],
     [State('page-info', 'children')],
 )
-def _update_image_2(plot_type, image_fname, colorbar_range, info_json):
-    exp = json.loads(info_json)['exp']
-    image = raw_simulator.get_sasimage(exp, image_fname)
-    return {
-        'data': [{
-            'type': plot_type,
-            'z': image,
-            'zmin': colorbar_range[0],
-            'zmax': colorbar_range[1],
-            'colorscale': 'Jet',
-        }],
-        'layout': _DEFAULT_FIGURE_LAYOUT,
-    }  # yapf: disable
+def _update_image_2(
+        plot_type,
+        image_fname,
+        colorbar_range,
+        show_circle,
+        circle_radius,
+        info_json,
+):
+    return _update_image(
+        plot_type,
+        image_fname,
+        colorbar_range,
+        show_circle,
+        circle_radius,
+        info_json,
+    )

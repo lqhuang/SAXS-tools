@@ -7,7 +7,7 @@ import dash_core_components as dcc
 import dash_html_components as html
 from dash.dependencies import Input, Output, State
 
-from .style import XLABEL, YLABEL, TITLE
+from .style import XLABEL, YLABEL, TITLE, LINE_STYLE
 from .style import AXIS_OPTIONS
 from .style import INLINE_LABEL_STYLE, GRAPH_GLOBAL_CONFIG
 from ..base import dash_app
@@ -117,13 +117,14 @@ def _get_figure(exp, plot_type, ref_idx, xaxis_scale, xlim=None, ylim=None):
         'x': each_sasm.q,
         'y': _CALC_FUNCTION[plot_type](each_sasm, ref_sasm),
         'type': 'line',
+        'line': LINE_STYLE,
         'name': each_sasm.getParameter('filename'),
     } for each_sasm in sasm_list]
 
     return {
         'data': data,
         'layout': {
-            'height': 400,
+            'height': 500,
             'hovermode': 'closest',
             'title': TITLE[plot_type],
             'xaxis': xaxis,

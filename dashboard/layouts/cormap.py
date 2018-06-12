@@ -67,8 +67,8 @@ def _update_figure(plot_type, info_json):
             (0.0, "#D55E00"),  # orange
             (p_threshold, "#D55E00"),
             (p_threshold, "#009E73"),  # green
-            (0.99999999, "#009E73"),
-            (1, "#0072B2"),  # blue
+            (1.0 - 1e-8, "#009E73"),
+            (1.0, "#0072B2"),  # blue
         )
         colorbar = dict(
             tickmode='array',
