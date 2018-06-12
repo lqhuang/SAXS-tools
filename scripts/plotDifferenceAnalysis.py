@@ -27,7 +27,7 @@ def plot_DifferenceAnalysis(root_directory,
     file_location = os.path.join(root_directory, 'Subtracted')
     try:
         seq_obj = DifferenceAnalysis.from_subtracted_dats(
-            os.path.join(file_location, 'S_*'),
+            os.path.join(file_location, 'S_*.dat'),
             smooth=smooth,
             scale=scale,
             ref_dat=None,
@@ -39,7 +39,7 @@ def plot_DifferenceAnalysis(root_directory,
             'Try to read data from curves with other names (subtracted curves).'
         )
         seq_obj = DifferenceAnalysis.from_subtracted_dats(
-            os.path.join(file_location, '*'),
+            os.path.join(file_location, '*.dat'),
             smooth=smooth,
             scale=scale,
             ref_dat=None,

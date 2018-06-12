@@ -31,9 +31,8 @@ def plot_CorMapAnalysis(root_directory,
                         fig_format='png',
                         figures_directory=None):
     # check Frames directory
-    subtracted_directory = os.path.exists(
-        os.path.join(root_directory, 'Subtracted'))
-    if not subtracted_directory:
+    subtracted_directory = os.path.join(root_directory, 'Subtracted')
+    if not os.path.exists(subtracted_directory):
         raise ValueError('Do not exist subtracted frames directory.')
     file_pattern = os.path.join(subtracted_directory, '*')
     subtract_dat_list = glob.glob(file_pattern)

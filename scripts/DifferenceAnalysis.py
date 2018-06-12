@@ -191,7 +191,7 @@ class DifferenceAnalysis(object):
         # glob files
         subtracted_dat_list = glob.glob(subtracted_dat_location)
         subtracted_dat_list.sort()
-        if len(subtracted_dat_list) == 0:
+        if not subtracted_dat_list:
             raise FileNotFoundError('Do not find any subtracted dat files.')
         # read data
         data_dict_list = [get_data_dict(dat_file, smooth=smooth) \

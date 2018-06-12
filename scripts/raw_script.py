@@ -1,4 +1,4 @@
-from __future__ import print_function, division
+from __future__ import print_function, division, absolute_import
 
 import os
 import sys
@@ -7,6 +7,7 @@ ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if ROOT_DIR not in sys.path:
     sys.path.append(ROOT_DIR)
 
+from io import open  # python 2/3 compatibility
 import yaml
 
 from RAW import RAWSimulator
@@ -24,9 +25,9 @@ def remove_processed(data_list, processed_path):
     return data_list
 
 
-def main():
+def run_RAW(exp_config):
     # TODO: complete this scripts
-    config_file = sys.argv[1]
+
     # exp_config = {
     #     'raw_cfg_path': sys.argv[1],
     #     'log_file': os.path.join(exp_root_path, 'log.txt'),
@@ -37,13 +38,13 @@ def main():
     #     'SCALE_QMIN': 0.23,
     #     'SCALE_QMAX': 0.26,
     # }
-    with open(config_file, 'r', encoding='utf-8') as fstream:
-        exp_config = yaml.load(fstream)
 
-    raw_cfg_path = exp_config.get('raw_cfg_path', None)
+    raw_cfg_path = exp_config.get(
+        'raw_cfg_path', None)
     exp_root_path = exp_config.get('exp_root_path', None)
     source_data_path = os.path.join(exp_root_path, 'Data')
-    num_skip = exp_config.get('skip_frames', 0)
+    num_skip = exp_config.get('skip_frames', 1)
+    buffer_num_skip = exp_config.get('buffer_skip_frames', 1)
     num_frames_per_group = exp_config.get('window_size', 5)
 
     alignment = exp_config.get('scale', 'statistics')
@@ -53,11 +54,17 @@ def main():
     scale_qmin = exp_config.get('scale_qmin', 0.23)
     sclae_qmax = exp_config.get('scale_qmax', 0.26)
 
+    buffer_scaling_factor = exp_config.get('buffer_scaling_factor', 1.0)
+
+    ProcessedFilePath = exp_config.get('ProcessedFilePath', 'Processed')
+    AveragedFilePath = exp_config.get('AveragedFilePath', 'Averaged')
+    SubtractedFilePath = exp_config.get('SubtractedFilePath', 'Subtracted')
+    GnomFilePath = exp_config.get('GnomFilePath', 'GNOM')
     raw_settings = {
-        'ProcessedFilePath': os.path.join(exp_root_path, 'Processed'),
-        'AveragedFilePath': os.path.join(exp_root_path, 'Averaged'),
-        'SubtractedFilePath': os.path.join(exp_root_path, 'Subtracted'),
-        'GnomFilePath': os.path.join(exp_root_path, 'GNOM'),
+        'ProcessedFilePath': os.path.join(exp_root_path, ProcessedFilePath),
+        'AveragedFilePath': os.path.join(exp_root_path, AveragedFilePath),
+        'SubtractedFilePath': os.path.join(exp_root_path, SubtractedFilePath),
+        'GnomFilePath': os.path.join(exp_root_path, GnomFilePath),
         'AutoSaveOnImageFiles': True,
         'AutoSaveOnSub': True,
         'AutoSaveOnAvgFiles': True,
@@ -72,8 +79,8 @@ def main():
         os.makedirs(raw_settings['AveragedFilePath'])
     if not os.path.exists(raw_settings['SubtractedFilePath']):
         os.makedirs(raw_settings['SubtractedFilePath'])
-    if not os.path.exists(raw_settings['GnomFilePath']):
-        os.makedirs(raw_settings['GnomFilePath'])
+    # if not os.path.exists(raw_settings['GnomFilePath']):
+    #     os.makedirs(raw_settings['GnomFilePath'])
 
     raw_simulator = RAWSimulator(
         raw_cfg_path,
@@ -111,7 +118,14 @@ def main():
 
     if buffer_frames and len(buffer_frames) > 1:
         average_buffer_sasm = raw_simulator.averageSASMs(
-            buffer_frames[num_skip:])
+            buffer_frames[buffer_num_skip:])
+        raw_simulator.scaleSASMs([average_buffer_sasm],
+                                 [buffer_scaling_factor])
+        raw_simulator.saveSASM(
+            average_buffer_sasm,
+            '.dat',
+            save_path=os.path.join(ROOT_DIR, raw_settings['AveragedFilePath']),
+        )
     elif buffer_frames and len(
             buffer_frames) == 1 and buffer_frames[0].startswith('A_'):
         # no buffer in `Processed` directory but A_buffer exist in `Processed`.
@@ -181,4 +195,7 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    config_file = sys.argv[1]
+    with open(config_file, 'r', encoding='utf-8') as fstream:
+        exp_config = yaml.load(fstream)
+    run_RAW(exp_config)
