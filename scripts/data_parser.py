@@ -38,10 +38,13 @@ def analysis_dat():
     display = str2bool(argv['--display'])
     save = str2bool(argv['--save'])
     path = os.path.realpath(argv['--path'])
-    try:
-        dash_line_index = argv['--dash_line_index'].split(',')
-        dash_line_index = [int(idx) for idx in dash_line_index]
-    except AttributeError:
+    if argv['--dash_line_index'] != 'None':
+        try:
+            dash_line_index = argv['--dash_line_index'].split(',')
+            dash_line_index = [int(idx) for idx in dash_line_index]
+        except AttributeError:
+            dash_line_index = (None, )
+    else:
         dash_line_index = (None, )
 
     if ref_dat == 'None':

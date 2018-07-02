@@ -64,7 +64,7 @@ def boxslice(array, center, radius=100):
 
 def subtract_radial_average(img, center, mask=None):
     """Let image subtract its radial average matrix.
-    
+
     Parameters
     ----------
     img : numpy.ndarray
@@ -74,7 +74,7 @@ def subtract_radial_average(img, center, mask=None):
     mask : numpy.ndarray, optional
         mask for image. 1 means valid area, 0 means masked area.
         (the default is None, which is no mask.)
-    
+
     Returns
     -------
     numpy.ndarray
@@ -124,7 +124,7 @@ def animate_frames(framefiles,
     """animate sas data frames
     """
     boxshape = get_boxsize(image_dim, center, radius)
-    # stack_shape: num_images, row, col
+    # stack_shape: (num_images, row, col)
     stack_shape = [len(framefiles)] + list(boxshape)
     image_stack = np.zeros(stack_shape, dtype=float)
     boxed_mask = boxslice(mask, center, radius)
