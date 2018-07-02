@@ -3,6 +3,7 @@ from __future__ import print_function, division
 import os.path
 import json
 
+import numpy as np
 from dash.dependencies import Input, Output, State
 import dash_core_components as dcc
 import dash_html_components as html
@@ -17,6 +18,9 @@ _PLOT_OPTIONS = [{
 }, {
     'label': 'Contour',
     'value': 'contour'
+}, {
+    'label': 'Average-subtracted',
+    'value': 'subtraction',
 }]
 
 _CIRCLE_OPTIONS = [{
@@ -31,6 +35,58 @@ _DEFAULT_FIGURE_LAYOUT = {
     'xaxis': dict(title='pixel', scaleanchor='y', constrain='domain'),
     'yaxis': dict(title='pixel', autorange='reversed'),
 }
+
+# TODO: set center in (x, y) (col, row)
+# center = np.asarray([150, 131])
+center = np.asarray([150, 129])  # optimized x,y
+
+
+def subtract_radial_average(img, center, mask=None):
+    """Let image subtract its radial average matrix.
+
+    Parameters
+    ----------
+    img : numpy.ndarray
+        2D matrix of input image
+    center : tuple of int
+        center of image (sequence in row and column)
+    mask : numpy.ndarray, optional
+        mask for image. 1 means valid area, 0 means masked area.
+        (Default is None, which is no mask.)
+
+    Returns
+    -------
+    numpy.ndarray
+        return residual image.
+    """
+    assert img.ndim == 2, 'Wrong dimension for image.'
+    assert len(center) == 2, 'Wrong dimension for center.'
+    if mask is not None:
+        masked_img = img * mask
+    else:
+        masked_img = img
+    center = np.round(center)
+    meshgrids = np.indices(img.shape)  # return (xx, yy)
+    # eq: r = sqrt( (x - x_center)**2 + (y - y_center)**2 + (z - z_center)**2 )
+    r = np.sqrt(sum(((grid - c)**2 for grid, c in zip(meshgrids, center))))
+    r = np.round(r).astype(np.int)
+
+    total_bin = np.bincount(r.ravel(), masked_img.ravel())
+    nr = np.bincount(r.ravel())  # count for each r
+    if mask is not None:
+        r_mask = np.zeros(r.shape)
+        r_mask[np.where(mask == 0.0)] = 1
+        nr_mask = np.bincount(r.ravel(), r_mask.ravel())
+        nr = nr - nr_mask
+    radialprofile = np.zeros_like(nr)
+    # r_pixel = np.unique(r.ravel())  # sorted
+    nomaskr = np.where(nr > 0)
+    radialprofile[nomaskr] = total_bin[nomaskr] / nr[nomaskr]
+    if mask is None:
+        residual_img = masked_img - radialprofile[r]  # subtract mean matrix
+    else:
+        residual_img = masked_img - radialprofile[r] * mask
+    return residual_img
 
 
 def _six_columns(suffix: str):
@@ -96,12 +152,7 @@ _DEFAULT_LAYOUT = html.Div(children=[
     ),
     html.Label('Radius of circle'),
     dcc.Slider(
-        id='sasimage-circle-radius-slider',
-        min=0,
-        max=150,
-        step=1,
-        value=30,
-    ),
+        id='sasimage-circle-radius-slider', min=0, max=150, step=1, value=30),
 ])
 
 
@@ -217,6 +268,16 @@ def _update_image(
         figure_layout = circle_layout
     else:
         figure_layout = _DEFAULT_FIGURE_LAYOUT
+
+    if plot_type == 'subtraction':
+        plot_type = 'heatmap'
+        # center of (row, col)
+        rc_center = (center[1], center[0])
+        mask = raw_simulator.boxed_mask
+        # subtract_average_image
+        image = subtract_radial_average(image, rc_center, mask)
+        colorbar_range[0] = image.min()
+        colorbar_range[1] = image.max()
 
     return {
         'data': [{

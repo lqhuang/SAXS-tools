@@ -3,6 +3,16 @@ from wtforms import (StringField, BooleanField, FloatField, TextAreaField,
                      SubmitField)
 from wtforms.validators import InputRequired
 
+LAYOUT_OPTIONS = (
+    ('sasimage', 'SAS Images'),
+    ('sasprofile', 'SAS Profile'),
+    ('cormap', 'CorMap Analysis'),
+    ('series_analysis', 'Series Analysis'),
+    ('guinier', 'Guinier Analysis'),
+    ('gnom', 'GNOM'),
+    ('colormap', 'Colormap and Crossline'),
+)
+
 
 class ExperimentSetupForm(FlaskForm):
     def __init__(self, setup_yaml, **form_kwargs):
@@ -44,15 +54,6 @@ class ExperimentSetupForm(FlaskForm):
 
 
 class LayoutConfigCheckbox(FlaskForm):
-    layout_options = [
-        ('sasimage', 'SAS Images'),
-        ('cormap', 'CorMap Analysis'),
-        ('sasprofile', 'SAS Profile'),
-        ('series_analysis', 'Series Analysis'),
-        ('guinier', 'Guinier'),
-        ('gnom', 'GNOM'),
-    ]
-
     def __init__(self, layouts, **form_kwargs):
         """[summary]
 
@@ -63,7 +64,7 @@ class LayoutConfigCheckbox(FlaskForm):
         """
         layouts_dict = {key: True for key in layouts}
         fields = []
-        for name, label in self.layout_options:
+        for name, label in LAYOUT_OPTIONS:
             field_kwargs = dict(
                 label=label, default=layouts_dict.get(name, False))
             fields.append((name, BooleanField(**field_kwargs)))

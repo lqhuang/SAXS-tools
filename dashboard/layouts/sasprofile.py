@@ -112,7 +112,8 @@ _DEFAULT_LAYOUT = html.Div(children=[
         labelStyle=INLINE_LABEL_STYLE,
     ),
     html.Label(
-        "Show error bar (Always be false with Guinier, Kratky and Porod plot.)"),
+        "Show error bar (Always be false with Guinier, Kratky and Porod plot.)"
+    ),
     dcc.RadioItems(
         id='sasprofile-errorbar',
         options=ERRORBAR_OPTIONS,
@@ -210,7 +211,6 @@ def _get_figure(exp, plot_type, errorbar_visible, xlim=None):
 #         if xaxis == 'log':
 #             return log10(_XLIM_MAX)
 
-
 # @dash_app.callback(
 #     Output('sasprofile-xlim', 'min'), [
 #         Input('sasprofile-plot-type', 'value'),
@@ -222,7 +222,6 @@ def _get_figure(exp, plot_type, errorbar_visible, xlim=None):
 #         _, xaxis = plot_type.split('-')
 #         if xaxis == 'log':
 #             return log10(1e-3)
-
 
 # @dash_app.callback(
 #     Output('sasprofile-xlim', 'step'), [
@@ -237,7 +236,6 @@ def _get_figure(exp, plot_type, errorbar_visible, xlim=None):
 #     print('step:', (curr_max - curr_min) / 200.0)
 #     print('step:', (curr_max - curr_min) / 200.0)
 #     return (curr_max - curr_min) / _SLIDER_POINTS
-
 
 # @dash_app.callback(
 #     Output('sasprofile-xlim', 'value'), [

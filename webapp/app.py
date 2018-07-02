@@ -17,6 +17,7 @@ def init_blueprint(app):
 def create_app(flask_config):
     app = Flask(__name__)
     app.config.from_object(flask_config)
+    app.url_map.strict_slashes = False
 
     init_blueprint(app)
 

@@ -5,24 +5,13 @@ import json
 
 from dash.dependencies import Input, Output
 
+from .layouts import registered_layouts
 from .base import dash_app
-from .layouts import (get_sasimage, get_sasprofile, get_series_analysis,
-                      get_cormap, get_gnom)
 
 
 def get_graph_layout(exp_name, layout_type):
-    if layout_type == 'sasimage':
-        return get_sasimage(exp_name)
-    elif layout_type == 'sasprofile':
-        return get_sasprofile(exp_name)
-    elif 'cormap' in layout_type:
-        return get_cormap(exp_name)
-    elif layout_type == 'series_analysis':
-        return get_series_analysis(exp_name)
-    elif layout_type == 'guinier':
-        return 'Not Implemented'
-    elif layout_type == 'gnom':
-        return get_gnom(exp_name)
+    if layout_type in registered_layouts:
+        return registered_layouts[layout_type](exp_name)
     else:
         return '404'
 

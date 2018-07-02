@@ -17,6 +17,7 @@ from flask import send_from_directory, send_file
 from webapp.forms import (ExperimentSettingsForm, ExperimentSetupForm,
                           LayoutConfigCheckbox, SampleInfoForm)
 
+# from register import LAYOUT_OPTIONS
 from dashboard.datamodel import raw_simulator
 
 exp_pages = Blueprint(
@@ -42,14 +43,26 @@ def to_basic_types(string: str) -> Union[bool, int, float, str]:
             return string
 
 
-NAME = dict()
-NAME['sasimage'] = 'SAS Image'
-NAME['sasprofile'] = 'SAS Profile'
-NAME['cormap'] = 'Correlation Map'
-NAME['series_analysis'] = 'Series Analysis'
-NAME['guinier'] = 'Guinier Fitting'
-NAME['gnom'] = 'Pair-wise Distribution (GNOM)'
-NAME['mw'] = 'Molecular Weight'
+LAYOUT_NAME = {
+    'sasimage': 'SAS Image',
+    'sasprofile': 'SAS Profile',
+    'cormap': 'Correlation Map',
+    'series_analysis': 'Series Analysis',
+    'guinier': 'Guinier Fitting',
+    'gnom': 'Pair-wise Distribution (GNOM)',
+    'mw': 'Molecular Weight',
+    'colormap': 'Colormap and Crossline',
+}
+
+LAYOUT_OPTIONS = (
+    ('sasimage', 'SAS Images'),
+    ('sasprofile', 'SAS Profile'),
+    ('cormap', 'CorMap Analysis'),
+    ('series_analysis', 'Series Analysis'),
+    ('guinier', 'Guinier Analysis'),
+    ('gnom', 'GNOM'),
+    ('colormap', 'Colormap and Crossline'),
+)
 
 DOWNLOADABLE = {
     'sasprofile': True,
@@ -171,11 +184,11 @@ def individual_experiment_page(exp_name: str):
     if show_dashboard:
         dashboard_params = [{
             'graph_type': gtype,
-            'graph_name': NAME[gtype],
+            'graph_name': LAYOUT_NAME[gtype],
             'downloadable': DOWNLOADABLE.get(gtype, False),
         } for gtype in selected_graph if gtype != 'exp']
 
-    exp_id = int(exp_name[3:])
+    exp_id = int(exp_name[-2:])
     prev_exp_name = 'EXP%s' % str(exp_id - 1).zfill(2)
     next_exp_name = 'EXP%s' % str(exp_id + 1).zfill(2)
 
