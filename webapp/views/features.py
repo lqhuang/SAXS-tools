@@ -1,4 +1,4 @@
-from flask import Blueprint
+from flask import render_template, Blueprint
 
 features = Blueprint(
     'features',
@@ -9,4 +9,4 @@ features = Blueprint(
 
 @features.route('/')
 def features_index():
-    return 'Hello, here is index of features page.'
+    return render_template('features.html')

@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+{% block page_content %}
+
+<div class="row">
+
+  <div class="col-sm-6 col-md-4">
+    <img class="img-responsive center-block" src="{{ url_for('static', filename='img/sasdash-icon.png') }}" alt="SASDASH icon" width="128" height="128">
+    <div class="caption">
+      <h3>Basic analysis</h3>
+      <p>
+        Support fundamental toolbox for SAS data:
+        <ul>
+          <li>SAS Image Viewer</li>
+          <li>SAS Profile (Guinier, Kratky, Porod)</li>
+          <li>Guinier Fitting Analysis</li>
+          <li>Series Analysis</li>
+          <li>Colormap and Crossline</li>
+        </ul>
+      </p>
+      <p><a class="btn btn-default" href="#" role="button">View details &raquo;</a></p>
+    </div>
+  </div>
+
+  <div class="col-sm-6 col-md-4">
+    <img class="img-responsive center-block" src="{{ url_for('static', filename='img/atsas-icon.png') }}" alt="ATSAS icon" width="128" height="128">
+    <div class="caption">
+      <h3>ATSAS (require pre-installed)</h3>
+      <p>
+        A program suite for small-angle scattering data analysis from biological macromolecules
+        <ul>
+          <li>CorMap Analysis</li>
+          <li>Pair-wise Distribution</li>
+          <li>SAXS/SANS 1D Simulation for 3D structure</li>
+          <li>Porod volume (undone)</li>
+          <li>Molecular Weight (undone)</li>
+          <li>Ab initio shape determination (undone)</li>
+        </ul>
+      </p>
+      <p><a class="btn btn-default" href="#" role="button">View details &raquo;</a></p>
+    </div>
+  </div>
+
+
+  <div class="col-sm-6 col-md-4">
+    <img class="img-responsive center-block" src="{{ url_for('static', filename='img/sastbx-icon.png') }}" alt="SASTBX icon" width="128" height="128">
+    <div class="caption">
+      <h3>SASTBX (require pre-installed)</h3>
+      <p>(Not available for now)
+        The Small Angle Scattering ToolBox (SASTBX) is an open-source software for biomolecular small-angle scattering.
+        <ul>
+          <li>Data reduction</li>
+          <li>P(r) distribution</li>
+        </ul>
+      </p>
+      <p><a class="btn btn-default" href="#" role="button">View details &raquo;</a></p>
+    </div>
+  </div>
+</div>
+
+<hr class="featurette-divider">
+
+<div class="row featurette">
+  <div class="col-md-7">
+    <h2 class="featurette-heading">Run locally <span class="text-muted">without network</span></h2>
+    <p class="lead">Support CLI tools. Search local files. Enjoy fast response. Share to others in LAN network.</p>
+  </div>
+  <div class="col-md-5">
+    <img class="featurette-image img-responsive center-block"  src="data:image/png;base64,R0lGODlhAQABAIAAAHd3dwAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==" alt="Generic placeholder image">
+  </div>
+</div>
+
+<hr class="featurette-divider">
+
+<div class="row featurette">
+  <div class="col-md-7 col-md-push-5">
+    <h2 class="featurette-heading">Share it as a web server <span class="text-muted">on internet</span></h2>
+    <p class="lead">Upload your SAS profile. Individual and unique page for each one. Show and share your conclusion to everyone.</p>
+  </div>
+  <div class="col-md-5 col-md-pull-7">
+    <img class="featurette-image img-responsive center-block"  src="data:image/png;base64,R0lGODlhAQABAIAAAHd3dwAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==" alt="Generic placeholder image">
+  </div>
+</div>
+
+{% endblock %}

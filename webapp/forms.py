@@ -14,6 +14,11 @@ LAYOUT_OPTIONS = (
 )
 
 
+class LocalFilePattern(FlaskForm):
+    filepattern = StringField('File pattern', validators=[InputRequired()])
+    scan = SubmitField(label='Scan')
+
+
 class ExperimentSetupForm(FlaskForm):
     def __init__(self, setup_yaml, **form_kwargs):
         # Initial unbound_fields.
